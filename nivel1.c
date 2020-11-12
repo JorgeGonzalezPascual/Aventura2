@@ -1,3 +1,5 @@
+//MODIFICAR COMENTARIOS Y EL IMPRIMIR PROMT
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
