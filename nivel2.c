@@ -9,17 +9,18 @@
 #define ARGS_SIZE 64
 #define PROMPT '$'
 
-#define RED         "\x1b[91m"
-#define GREEN       "\x1b[92m"
-#define YELLOW      "\x1b[93m"
-#define BLUE        "\x1b[94m"
-#define MAGENTA     "\x1b[95m"
-#define CYAN        "\x1b[96m"
-#define WHITE       "\x1b[97m"
+#define RED "\x1b[91m"
+#define GREEN "\x1b[92m"
+#define YELLOW "\x1b[93m"
+#define BLUE "\x1b[94m"
+#define MAGENTA "\x1b[95m"
+#define CYAN "\x1b[96m"
+#define WHITE "\x1b[97m"
 #define COLOR_RESET "\x1b[0m"
 
 #define BLOND "\x1b[1m"
 
+//Variables
 char line[COMMAND_LINE_SIZE];
 
 // Funciones
@@ -32,20 +33,14 @@ int internal_export(char **args);
 int internal_source(char **args);
 int internal_jobs(char **args);
 
-
-
 /*
 * Main del programa.
 */
 int main()
 {
     while (1)
-    {
         if (read_line(line))
-        {
             execute_line(line);
-        }
-    }
 
     return 0;
 }
@@ -55,7 +50,7 @@ int main()
 */
 void imprimir_prompt()
 {
-    
+
     //Get USERNAME
     char *user = getenv("USER");
 
@@ -64,13 +59,12 @@ void imprimir_prompt()
     // Gets the current work directory.
     getcwd(prompt, COMMAND_LINE_SIZE);
     // Prints the prompt and the separator.
-    printf(BLOND RED "%s:" BLUE"%s " COLOR_RESET YELLOW "%c: " COLOR_RESET, user, prompt, PROMPT);
+    printf(BLOND RED "%s:" BLUE "%s " COLOR_RESET YELLOW "%c: " COLOR_RESET, user, prompt, PROMPT);
 
     // frees the memory for prompt.
     free(prompt);
 
     fflush(stdout);
-
 }
 
 /*
@@ -84,7 +78,7 @@ char *read_line(char *line)
     // Control de errores
     if (fgets(line, COMMAND_LINE_SIZE, stdin) == NULL)
     {
-        perror("Error al leer la línea");
+        perror("Error");
     }
 
     return line;
@@ -206,12 +200,62 @@ int check_internal(char **args)
     return comandoInterno;
 }
 
+/*
+Utiliza la llamada al sistema chdir() para cambiar de directorio
+*/
 int internal_cd(char **args)
 {
-#if DEBUG
-    printf("[internal_cd() → Esta función cambiará de directorio]\n");
-#endif
-    return 1;
+    // falta control de error
+    char *linea = malloc(sizeof(char) * COMMAND_LINE_SIZE);
+    // Separadores: comilla,comillas, barra
+    const int sep[] = {34, 39, 92};
+
+    if (args[2])
+    {
+        // Empezamos con "No permitido"
+        int permitido = 0;
+        for (int i = 0; sep[i] && !permitido; i++)
+        {
+            if (args[1][i] == (char)sep[i])
+            {
+                permitido = 1;
+            }
+        }
+
+        if (permitido)
+        {
+            fprintf(stderr, "Error: Too much arguments\n");
+        }
+        else
+        {
+            char *ruta;
+            if (chdir(ruta))
+            {
+                perror("Error");
+            }
+        }
+    }
+    else
+    {
+        if (args[1] == NULL)
+        {
+            if (chdir(getenv("HOME")))
+            {
+                perror("Error");
+            }
+        }
+        else
+        {
+            if (chdir(args[1]))
+            {
+                perror("Error");
+            }
+        }
+    }
+
+    free(linea);
+
+    return 0;
 }
 
 int internal_export(char **args)
