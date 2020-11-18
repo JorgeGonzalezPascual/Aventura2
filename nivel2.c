@@ -1,13 +1,16 @@
 // NIVEL 2
 
+//Librerias
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
+//Constantes
 #define DEBUG 1
 #define COMMAND_LINE_SIZE 1024
 #define ARGS_SIZE 64
 #define PROMPT '$'
+#define myHome '~'
 
 #define RED "\x1b[91m"
 #define GREEN "\x1b[92m"
@@ -23,7 +26,7 @@
 //Variables
 char line[COMMAND_LINE_SIZE];
 
-// Funciones
+//Funciones
 char *read_line(char *line);
 int execute_line(char *line);
 int parse_args(char **args, char *line);
@@ -33,43 +36,47 @@ int internal_export(char **args);
 int internal_source(char **args);
 int internal_jobs(char **args);
 
-/*
-* Main del programa.
-*/
+/**
+ * Main del programa
+ **/
 int main()
 {
     while (1)
         if (read_line(line))
             execute_line(line);
-
     return 0;
 }
 
-/*
-*   Método para imprimir el PROMPT
-*/
+/**
+ * Método para imprimir el PROMPT
+**/
 void imprimir_prompt()
 {
 
     //Get USERNAME
     char *user = getenv("USER");
 
-    char *prompt = malloc(sizeof(char) * COMMAND_LINE_SIZE);
+    char *prompt;
+    if ((prompt = malloc((sizeof(char) * COMMAND_LINE_SIZE) - sizeof(user))))
+    {
+        // Gets the current work directory.
+        getcwd(prompt, COMMAND_LINE_SIZE);
 
-    // Gets the current work directory.
-    getcwd(prompt, COMMAND_LINE_SIZE);
-    // Prints the prompt and the separator.
-    printf(BLOND RED "%s:" BLUE "%s " COLOR_RESET YELLOW "%c: " COLOR_RESET, user, prompt, PROMPT);
+        // Prints the prompt and the separator.
+        printf(BLOND RED "%s:" BLUE "%s " COLOR_RESET YELLOW "%c: " COLOR_RESET, user, prompt, PROMPT);
+    }
+    else
+    {
+        perror("Error");
+    }
 
-    // frees the memory for prompt.
     free(prompt);
-
     fflush(stdout);
 }
 
-/*
-Leer una linea de la consola
-*/
+/**
+* Leer una linea de la consola
+**/
 char *read_line(char *line)
 {
     imprimir_prompt();
@@ -84,18 +91,17 @@ char *read_line(char *line)
     return line;
 }
 
-/*
-*
-*/
+/**
+**
+**/
 int execute_line(char *line)
 {
 
     //Reservamos memoria para los tokens
-
     char **args = malloc(sizeof(char *) * ARGS_SIZE);
     if (args == NULL)
     {
-        fprintf(stderr, "Memoria dinamica llena.");
+        fprintf(stderr, "Memoria dinámica llena.");
     }
 
     if (args)
@@ -111,7 +117,10 @@ int execute_line(char *line)
     free(args);
 }
 
-//{line hacer esto #para esto} args[x][0]
+/**
+ * 
+ * 
+ **/
 int parse_args(char **args, char *line)
 {
     int nToken = 0;
@@ -149,6 +158,9 @@ int parse_args(char **args, char *line)
     return nToken;
 }
 
+/**
+ * Chequeamos si es un comando interno
+ **/
 int check_internal(char **args)
 {
     int comandoInterno = 0;
@@ -200,52 +212,172 @@ int check_internal(char **args)
     return comandoInterno;
 }
 
-/*
-Utiliza la llamada al sistema chdir() para cambiar de directorio
-*/
+/**
+ * Método que borra un caracter de un "array/puntero"
+ **/
+void borradorCaracter(char *args, char caracter)
+{
+    int indice = 0;
+    int indiceNuevo = 0;
+
+    while (args[indice])
+    {
+        if (args[indice] != caracter)
+        {
+            args[indiceNuevo] = args[indice];
+            indiceNuevo++;
+        }
+        indice++;
+    }
+    args[indiceNuevo] = 0;
+}
+
+/**
+ * Función internal_cd
+ * -----------------------------------------------------------------
+ * Utiliza la llamada al sistema chdir() para cambiar de directorio
+ * 
+ * Input:
+ * Output:
+ **/
+
 int internal_cd(char **args)
 {
     // falta control de error
     char *linea = malloc(sizeof(char) * COMMAND_LINE_SIZE);
-    // Separadores: comilla,comillas, barra
-    const int sep[] = {34, 39, 92};
+    if (linea == NULL)
+    {
+        fprintf(stderr, "No hay memoria dinámica disponible en este momento.");
+    }
 
-    if (args[2]) {
-        fprintf(stderr, "Error: Too much arguments\n");
-    } else {
-        if (args[1] == NULL) {
-            if (chdir(getenv("HOME"))) {
+    //Concatenamos los args
+    for (int i = 0; args[i]; i++)
+    {
+        strcat(linea, " ");
+        strcat(linea, args[i]);
+    }
+
+    // Separadores en ASCII: barra,comillas,comilla, espacio
+    const int sep[] = {92, 34, 39, 32};
+
+    if (args[2])
+    {
+        //Miramos si es un caso escepcional
+        int numeroLetrasArgs1 = strlen(args[1]);
+        int permitido = 1;
+        //miramos comilla o comillas
+
+        char *ruta;
+        //comilla
+        if (args[1][0] == (char)sep[1])
+        {
+            ruta = strchr(linea, (char)(sep[1]));
+            borradorCaracter(ruta, (char)sep[1]);
+        }
+        //comillas
+        else if (args[1][0] == (char)sep[2])
+        {
+            ruta = strchr(linea, (char)(sep[2]));
+            borradorCaracter(ruta, (char)sep[2]);
+        }
+        //barra
+        else if (args[1][numeroLetrasArgs1 - 1] == (char)sep[0])
+        {
+            ruta = strchr(linea, args[1][0]);
+            borradorCaracter(ruta, (char)sep[0]);
+        }
+        else
+        {
+            permitido = 0;
+        }
+
+        //Si se permiten 2 palabras después del cd
+        if (!permitido)
+        {
+            fprintf(stderr, "Error: Too much arguments\n");
+        }
+        else
+        {
+            if (chdir(ruta))
+            {
                 perror("Error");
             }
-        } else {
-            if (chdir(args[1])) {
+        }
+    }
+    //Si es una palabra
+    else
+    {
+        if (args[1] == NULL)
+        {
+            if (chdir(getenv("HOME")))
+            {
+                perror("Error");
+            }
+        }
+        else
+        {
+            if (chdir(args[1]))
+            {
                 perror("Error");
             }
         }
     }
 
-    free(linea);
+#if DEBUG
+    char *prompt;
+    if ((prompt = malloc((sizeof(char) * COMMAND_LINE_SIZE))))
+    {
+        // Gets the current work directory.
+        getcwd(prompt, COMMAND_LINE_SIZE);
 
+        printf("[internal_cd() → %s]\n", prompt);
+    }
+    else
+    {
+        perror("Error");
+    }
+
+    free(prompt);
+#endif
+
+    free(linea);
     return 1;
 }
 
-int internal_export(char **args) {
-    const char *separador= "=";
+/**
+ * Función internal_export
+ * -----------------------------------------------------------------
+ * RELLENO
+ * 
+ * Input:
+ * Output:
+ **/
+int internal_export(char **args)
+{
+    const char *separador = "=";
     char *nombre, *valor;
 
-    if (args[1]) {
+    if (args[1])
+    {
         nombre = strtok(args[1], separador);
         valor = strtok(NULL, separador);
     }
 
-    if (nombre == NULL || valor == NULL){
+    if (nombre == NULL || valor == NULL)
+    {
         fprintf(stderr, "Error de sintaxis");
-    }else { 
+    }
+    else
+    {
+#if DEBUG
         printf("[internal_export() → nombre: %s]\n", nombre);
         printf("[internal_export() → valor: %s]\n", valor);
         printf("[internal_export() → antiguo valor para %s: %s]\n", nombre, getenv(nombre));
+#endif
         setenv(nombre, valor, 1);
+#if DEBUG
         printf("[internal_export() → nuevo valor para %s: %s]\n", nombre, getenv(nombre));
+#endif
     }
 
     return 1;
