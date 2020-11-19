@@ -10,7 +10,6 @@
 #define COMMAND_LINE_SIZE 1024
 #define ARGS_SIZE 64
 #define PROMPT '$'
-#define myHome '~'
 
 #define RED "\x1b[91m"
 #define GREEN "\x1b[92m"
@@ -35,6 +34,13 @@ int internal_cd(char **args);
 int internal_export(char **args);
 int internal_source(char **args);
 int internal_jobs(char **args);
+int internal_fg(char **args);
+int internal_bg(char **args);
+int internal_exit(char **args);
+int internal_fg(char **args);
+
+int chdir();
+int getcwd();
 
 /**
  * Main del programa
@@ -45,6 +51,50 @@ int main()
         if (read_line(line))
             execute_line(line);
     return 0;
+}
+
+/**
+ * Método para remplazar una subcadena por otra subcadena en una cadena
+ **/
+char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nuevaCadena)
+{
+    char *result;
+    int i, cnt = 0;
+    int newWlen = strlen(nuevaCadena);
+    int oldWlen = strlen(cadenaAntigua);
+
+    // Counting the number of times old word
+    // occur in the string
+    for (i = 0; cadena[i] != '\0'; i++)
+    {
+        if (strstr(&cadena[i], cadenaAntigua) == &cadena[i])
+        {
+            cnt++;
+
+            // Jumping to index after the old word.
+            i += oldWlen - 1;
+        }
+    }
+
+    // Making new string of enough length
+    result = (char *)malloc(i + cnt * (newWlen - oldWlen) + 1);
+
+    i = 0;
+    while (*cadena)
+    {
+        // compare the substring with the result
+        if (strstr(cadena, cadenaAntigua) == cadena)
+        {
+            strcpy(&result[i], nuevaCadena);
+            i += newWlen;
+            cadena += oldWlen;
+        }
+        else
+            result[i++] = *cadena++;
+    }
+
+    result[i] = '\0';
+    return result;
 }
 
 /**
@@ -61,6 +111,13 @@ void imprimir_prompt()
     {
         // Gets the current work directory.
         getcwd(prompt, COMMAND_LINE_SIZE);
+        if (strcmp(prompt, getenv("HOME")))
+        {
+            if (strstr(prompt, getenv("HOME")))
+            {
+                prompt = replaceWord(prompt, getenv("HOME"), "~");
+            }
+        }
 
         // Prints the prompt and the separator.
         printf(BLOND RED "%s:" BLUE "%s " COLOR_RESET YELLOW "%c: " COLOR_RESET, user, prompt, PROMPT);
@@ -260,7 +317,7 @@ int internal_cd(char **args)
     // Separadores en ASCII: barra,comillas,comilla, espacio
     const int sep[] = {92, 34, 39, 32};
 
-    if (args[2])
+    if (args[2] != NULL)
     {
         //Miramos si es un caso escepcional
         int numeroLetrasArgs1 = strlen(args[1]);
