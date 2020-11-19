@@ -63,37 +63,43 @@ char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nue
     int newWlen = strlen(nuevaCadena);
     int oldWlen = strlen(cadenaAntigua);
 
-    // Counting the number of times old word
-    // occur in the string
+    // Contando el número de veces palabra antigua
+    // que sale en el Sring
     for (i = 0; cadena[i] != '\0'; i++)
     {
         if (strstr(&cadena[i], cadenaAntigua) == &cadena[i])
         {
             cnt++;
-
-            // Jumping to index after the old word.
+            //Saltar al índice después de la palabra antigua.
             i += oldWlen - 1;
         }
     }
 
-    // Making new string of enough length
-    result = (char *)malloc(i + cnt * (newWlen - oldWlen) + 1);
-
-    i = 0;
-    while (*cadena)
+    //Reserva de espacio suficiente para la nueva cadena
+    if (result = malloc(i + cnt * (newWlen - oldWlen) + 1))
     {
-        // compare the substring with the result
-        if (strstr(cadena, cadenaAntigua) == cadena)
+
+        i = 0;
+        while (*cadena)
         {
-            strcpy(&result[i], nuevaCadena);
-            i += newWlen;
-            cadena += oldWlen;
+            //Comparar la subcadena con el resultado
+            if (strstr(cadena, cadenaAntigua) == cadena)
+            {
+                strcpy(&result[i], nuevaCadena);
+                i += newWlen;
+                cadena += oldWlen;
+            }
+            else
+                result[i++] = *cadena++;
         }
-        else
-            result[i++] = *cadena++;
+
+        result[i] = '\0';
+    }
+    else
+    {
+        perror("Error");
     }
 
-    result[i] = '\0';
     return result;
 }
 
@@ -103,13 +109,13 @@ char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nue
 void imprimir_prompt()
 {
 
-    //Get USERNAME
+    //Obetener USERNAME
     char *user = getenv("USER");
 
     char *prompt;
     if ((prompt = malloc((sizeof(char) * COMMAND_LINE_SIZE) - sizeof(user))))
     {
-        // Gets the current work directory.
+        //Obtener el directorio de trabajo actual.
         getcwd(prompt, COMMAND_LINE_SIZE);
         if (strcmp(prompt, getenv("HOME")))
         {
@@ -119,7 +125,7 @@ void imprimir_prompt()
             }
         }
 
-        // Prints the prompt and the separator.
+        //Printeamos el el PROMPT "personalizado"
         printf(BLOND RED "%s:" BLUE "%s " COLOR_RESET YELLOW "%c: " COLOR_RESET, user, prompt, PROMPT);
     }
     else
@@ -138,7 +144,7 @@ char *read_line(char *line)
 {
     imprimir_prompt();
 
-    // Reads input introduced in stdin by the user.
+    //Leer la entrada introducida en stdin por el usuario    
     // Control de errores
     if (fgets(line, COMMAND_LINE_SIZE, stdin) == NULL)
     {
