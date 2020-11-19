@@ -2,7 +2,8 @@
 
 *.o
 nivel1
-nivel2
+/nivel2
+.sh
 nivel3
 nivel4
 nivel5
