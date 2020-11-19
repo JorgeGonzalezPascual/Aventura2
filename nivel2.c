@@ -41,6 +41,7 @@ int internal_fg(char **args);
 
 int chdir();
 int getcwd();
+int setenv();
 
 /**
  * Main del programa
@@ -76,7 +77,7 @@ char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nue
     }
 
     //Reserva de espacio suficiente para la nueva cadena
-    if (result = malloc(i + cnt * (newWlen - oldWlen) + 1))
+    if ((result = malloc(i + cnt * (newWlen - oldWlen) + 1)))
     {
 
         i = 0;
@@ -178,6 +179,9 @@ int execute_line(char *line)
     }
     //Liberamos memoria
     free(args);
+
+    //return temporal
+    return 1;
 }
 
 /**
