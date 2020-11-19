@@ -5,7 +5,7 @@ CFLAGS=-c -g -Wall -std=c99
 SOURCES=nivel1.c nivel2.c nivel3.c nivel4.c nivel5.c nivel6.c my_shell.c
 LIBRARIES= #.o
 INCLUDES= #.h
-PROGRAMS=nivel1 #nivel2 nivel3 nivel4 nivel5 nivel6  my_shell
+PROGRAMS=nivel1 nivel2 nivel3 nivel4 nivel5 nivel6  my_shell
 OBJS=$(SOURCES:.c=.o)
  
 all: $(OBJS) $(PROGRAMS)
