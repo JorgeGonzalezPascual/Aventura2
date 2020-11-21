@@ -165,7 +165,7 @@ int execute_line(char *line)
     char **args = malloc(sizeof(char *) * ARGS_SIZE);
     if (args == NULL)
     {
-        fprintf(stderr, "Memoria dinámica llena.");
+        fprintf(stderr, "Memoria dinámica llena.\n");
     }
 
     if (args)
@@ -314,7 +314,7 @@ int internal_cd(char **args)
     char *linea = malloc(sizeof(char) * COMMAND_LINE_SIZE);
     if (linea == NULL)
     {
-        fprintf(stderr, "No hay memoria dinámica disponible en este momento.");
+        fprintf(stderr, "No hay memoria dinámica disponible en este momento.\n");
     }
 
     //Concatenamos los args
@@ -432,7 +432,7 @@ int internal_export(char **args)
 
     if (nombre == NULL || valor == NULL)
     {
-        fprintf(stderr, "Error de sintaxis");
+        fprintf(stderr, "Error de sintaxis\n");
     }
     else
     {
