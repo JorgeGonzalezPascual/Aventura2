@@ -5,6 +5,7 @@
 *.ko
 *.obj
 *.elf
+*.sh
 
 # Shared objects (inc. Windows DLLs)
 *.dll

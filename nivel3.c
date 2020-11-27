@@ -4,9 +4,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 //Constantes
-#define DEBUG 1
+#define DEBUG0 0
+#define DEBUG1 0
+#define DEBUG2 0
+#define DEBUG3 1
+
 #define COMMAND_LINE_SIZE 1024
 #define ARGS_SIZE 64
 #define PROMPT '$'
@@ -39,9 +46,15 @@ int internal_bg(char **args);
 int internal_exit(char **args);
 int internal_fg(char **args);
 
+// -----------------
 int chdir();
 int getcwd();
 int setenv();
+int fork();
+int execvp();
+int getppid();
+int getpid();
+// -----------------
 
 /**
  * Main del programa
@@ -65,7 +78,7 @@ char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nue
     int oldWlen = strlen(cadenaAntigua);
 
     // Contando el número de veces palabra antigua
-    // que sale en el Sring
+    // que sale en el String
     for (i = 0; cadena[i] != '\0'; i++)
     {
         if (strstr(&cadena[i], cadenaAntigua) == &cadena[i])
@@ -145,7 +158,7 @@ char *read_line(char *line)
 {
     imprimir_prompt();
 
-    //Leer la entrada introducida en stdin por el usuario    
+    //Leer la entrada introducida en stdin por el usuario
     // Control de errores
     if (fgets(line, COMMAND_LINE_SIZE, stdin) == NULL)
     {
@@ -163,25 +176,69 @@ int execute_line(char *line)
 
     //Reservamos memoria para los tokens
     char **args = malloc(sizeof(char *) * ARGS_SIZE);
-    if (args == NULL)
-    {
-        fprintf(stderr, "Memoria dinámica llena.\n");
-    }
 
-    if (args)
+    if (args != NULL)
     {
         //Parseamos
         parse_args(args, line);
         if (args[0])
         {
-            check_internal(args);
+            if (!check_internal(args))
+            {
+                int state;
+                pid_t pid = fork();
+
+                //Hijo
+                if (pid == 0)
+                {
+                    #if DEBUG3
+                        printf("[execute_line() → PID padre: %d]\n", getppid());
+                        printf("[execute_line() → PID hijo: %d]\n", getpid());
+                    #endif
+                    
+                    if(execvp(args[0], args)){
+                        fprintf(stderr, "Error al leer el comando externo: %s.\n",args[0]);
+                        //Terminación anormal
+                        exit(EXIT_FAILURE);
+                    }
+                    //Salimos sin errores (Terminación Normal)
+                    exit(EXIT_SUCCESS);
+                    
+                }
+                //Padre
+                else if (pid > 0)
+                {
+                    pid  = wait(&state);
+                    //Hijo ha terminado de manera normal
+                    if(WIFEXITED(state)){
+                        #if DEBUG3
+                            printf("[EL proceso hijo %d ha finalizado con exit(), estado: %d]\n",pid ,WEXITSTATUS(state));
+                        #endif
+                    }
+                    //Hijo ha finalizado por señal
+                    if(WIFSIGNALED(state)){
+                        #if DEBUG3
+                            printf("[EL proceso hijo %d ha finalizado por final, estado: %d]\n",pid ,WTERMSIG(state));
+                        #endif
+                    }
+                }
+                //Error de fork()
+                else{
+                    perror("Error fork");
+                    //Terminación anormal
+                    exit(EXIT_FAILURE);
+                }
+            }
         }
+    }
+    else 
+    {
+        fprintf(stderr, "Memoria dinámica llena.\n");
     }
     //Liberamos memoria
     free(args);
 
-    //return temporal
-    return 1;
+    return EXIT_SUCCESS;
 }
 
 /**
@@ -200,7 +257,7 @@ int parse_args(char **args, char *line)
     while (token != NULL)
     {
 
-#if DEBUG
+#if DEBUG1
         printf("[parse_args() → token %d: %s]\n", nToken, token);
 #endif
         //Descartamos comentarios
@@ -213,7 +270,7 @@ int parse_args(char **args, char *line)
             //Añadimos NULL
             token = NULL;
             args[nToken] = token;
-#if DEBUG
+#if DEBUG1
             printf("[parse_args() → token %d corregido: %s]\n", nToken, token);
 #endif
         }
@@ -222,6 +279,7 @@ int parse_args(char **args, char *line)
         token = strtok(NULL, s);
         nToken++;
     }
+    
     return nToken;
 }
 
@@ -390,7 +448,7 @@ int internal_cd(char **args)
         }
     }
 
-#if DEBUG
+#if DEBUG0
     char *prompt;
     if ((prompt = malloc((sizeof(char) * COMMAND_LINE_SIZE))))
     {
@@ -436,13 +494,13 @@ int internal_export(char **args)
     }
     else
     {
-#if DEBUG
+#if DEBUG1
         printf("[internal_export() → nombre: %s]\n", nombre);
         printf("[internal_export() → valor: %s]\n", valor);
         printf("[internal_export() → antiguo valor para %s: %s]\n", nombre, getenv(nombre));
 #endif
         setenv(nombre, valor, 1);
-#if DEBUG
+#if DEBUG1
         printf("[internal_export() → nuevo valor para %s: %s]\n", nombre, getenv(nombre));
 #endif
     }
@@ -452,15 +510,44 @@ int internal_export(char **args)
 
 int internal_source(char **args)
 {
-#if DEBUG
-    printf("[internal_source() → Esta función ejecutará un fichero de líneas de comandos]\n");
-#endif
+    // Creamos la variable y reservamos memoria para leer las lineas del fichero
+    char *linea = (char *)malloc(sizeof(char) * COMMAND_LINE_SIZE);
+
+    if (linea) {
+        // Declaramos, instanciamos y creamos el enlace al fichero a leer
+        FILE *fichero = fopen(args[1], "r");
+
+        // Si existe el fichero
+        if(fichero) {
+            // Leemos las lineas y las ejecutamos
+            while (fgets(linea, COMMAND_LINE_SIZE, fichero)) {
+                execute_line(linea);
+                fflush(fichero);
+            }
+
+            fclose(fichero);
+            free(linea);
+
+            return EXIT_SUCCESS;
+        } else {
+            // Error al leer el fichero
+            perror("Error");
+            free(linea);
+        }
+    }
+
+    return EXIT_FAILURE;
+
+    #if DEBUG1
+        printf("[internal_source() → Esta función ejecutará un fichero de líneas de comandos]\n");
+    #endif
+    
     return 1;
 }
 
 int internal_jobs(char **args)
 {
-#if DEBUG
+#if DEBUG1
     printf("[internal_jobs() → Esta función mostrará el PID de los procesos que no estén en foreground]\n");
 #endif
     return 1;
@@ -468,7 +555,7 @@ int internal_jobs(char **args)
 
 int internal_fg(char **args)
 {
-#if DEBUG
+#if DEBUG1
     printf("[internal_fg() → Esta función parsará/activará a primer plano procesos]\n");
 #endif
     return 1;
@@ -476,7 +563,7 @@ int internal_fg(char **args)
 
 int internal_bg(char **args)
 {
-#if DEBUG
+#if DEBUG1
     printf("[internal_bg() → Esta función parsará/activará a segundo plano procesos]\n");
 #endif
     return 1;
@@ -484,7 +571,7 @@ int internal_bg(char **args)
 
 int internal_exit(char **args)
 {
-#if DEBUG
+#if DEBUG1
     printf("[internal_exit() → Esta función sale del mini shell]\n");
 #endif
     exit(0);
