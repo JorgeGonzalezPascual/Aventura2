@@ -157,12 +157,18 @@ void imprimir_prompt()
 char *read_line(char *line)
 {
     imprimir_prompt();
-
+    char* ptr = fgets(line, COMMAND_LINE_SIZE, stdin);
+   
     //Leer la entrada introducida en stdin por el usuario
     // Control de errores
-    if (fgets(line, COMMAND_LINE_SIZE, stdin) == NULL)
-    {
-        perror("Error");
+    if(ptr == NULL){
+        printf("\r\n");
+        if(feof(stdin)){
+            printf("Adeu\n");
+            exit(0);
+        }else{
+            perror("Error");
+        }
     }
 
     return line;
