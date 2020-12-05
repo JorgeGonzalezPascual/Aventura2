@@ -62,7 +62,7 @@ char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nue
 
 //Variables
 static struct info_process jobs_list[N_JOBS];
-char *comand;
+char *miniShell;
 
 // -----------------
 int chdir();
@@ -80,11 +80,13 @@ int pause();
  **/
 int main(int argc, char *argv[])
 {
-    comand = argv[0];
+    miniShell = argv[0];
     char line[COMMAND_LINE_SIZE];
-    //name = argv[0];
 
-    jobs_list_init;
+    jobs_list[0].pid = 0;
+    jobs_list[0].status = 'N';
+    memset(jobs_list[0].cmd, '\0', strlen(jobs_list[0].cmd));
+
     //Manejadores de señales para el padre o para el shell
     signal(SIGCHLD, reaper);
     signal(SIGINT, ctrlc);
@@ -107,11 +109,10 @@ int main(int argc, char *argv[])
 **/
 void imprimir_prompt()
 {
-
-    //Obetener USERNAME
+    // Obtenemos el nombre de usuario
     char *user = getenv("USER");
-
     char *prompt;
+
     if ((prompt = malloc((sizeof(char) * COMMAND_LINE_SIZE) - sizeof(user))))
     {
         //Obtener el directorio de trabajo actual.
@@ -124,7 +125,7 @@ void imprimir_prompt()
             }
         }
 
-        //Printeamos el el PROMPT "personalizado"
+        //Imprimimos el el PROMPT "personalizado"
         printf(BLOND RED "%s:" BLUE "%s " COLOR_RESET YELLOW "%c: " COLOR_RESET, user, prompt, PROMPT);
     }
     else
@@ -188,34 +189,60 @@ int execute_line(char *line)
                 int state;
                 pid_t pid = fork();
 
-                jobs_list[0].pid = pid;
-                jobs_list[0].status = 'E';
+                // jobs_list[0].pid = pid;
+                // jobs_list[0].status = 'E';
 
+#if DEBUG4
                 printf("jobs_list[0].command_line: %s\n", jobs_list[0].cmd);
+#endif
 
                 //Hijo
                 if (pid == 0)
                 {
+                    // Hijo arriba
+                    jobs_list[0].pid = getpid();
+                    jobs_list[0].status = 'E';
+                    strcpy(jobs_list[0].cmd, line);
+
+                    // Padre abajo
+                    jobs_list[1].pid = getppid();
+                    jobs_list[1].status = 'D';
+                    strcpy(jobs_list[1].cmd, miniShell);
+
                     signal(SIGCHLD, SIG_DFL);
                     signal(SIGINT, SIG_IGN);
-#if DEBUG3
-                    printf("[execute_line() → PID padre: %d]\n", getppid());
-                    printf("[execute_line() → PID hijo: %d]\n", getpid());
+
+#if DEBUG4
+                    printf("[execute_line() → PID padre: %d] (%s)\n", getppid(), jobs_list[1].cmd);
+                    printf("[execute_line() → PID hijo: %d] (%s)\n", getpid(), jobs_list[0].cmd);
 #endif
 
-                    if (execvp(args[0], args)<0)
+                    if (execvp(args[0], args) < 0)
                     {
                         fprintf(stderr, "Error al leer el comando externo: %s.\n", args[0]);
                         //Terminación anormal
                         exit(EXIT_FAILURE);
                     }
-                    //Salimos sin errores (Terminación Normal)
+                    // Salimos sin errores (Terminación Normal)
+
+                    // Padre arriba
+                    jobs_list[0].pid = getppid();
+                    jobs_list[0].status = 'E';
+                    strcpy(jobs_list[0].cmd, miniShell);
+                    // Hijo abajo
+                    jobs_list[1].pid = getpid();
+                    jobs_list[1].status = 'D';
+                    strcpy(jobs_list[1].cmd, line);
+
                     exit(EXIT_SUCCESS);
                 }
                 //Padre
                 else if (pid > 0)
                 {
-                    //pid = wait(&state);
+                    //Copiamos el padre en la pila
+                    jobs_list[0].pid = pid;
+                    jobs_list[0].status = 'E';
+                    strcpy(jobs_list[0].cmd, line);
 
                     //Mientras haya un proceso foreground
                     while (jobs_list[0].pid > 0)
@@ -234,7 +261,7 @@ int execute_line(char *line)
                     if (WIFSIGNALED(state))
                     {
 #if DEBUG3
-                        printf("[EL proceso hijo %d ha finalizado por final, estado: %d]\n", pid, WTERMSIG(state));
+                        printf("[El proceso hijo %d ha finalizado por final, estado: %d]\n", pid, WTERMSIG(state));
 #endif
                     }
                 }
@@ -488,11 +515,6 @@ int internal_cd(char **args)
 
 /**
  * Función internal_export
- * -----------------------------------------------------------------
- * RELLENO
- * 
- * Input:
- * Output:
  **/
 int internal_export(char **args)
 {
@@ -601,16 +623,6 @@ int internal_exit(char **args)
 }
 
 /**
- * Inicialización del job_list
- */
-void job_list_init()
-{
-    jobs_list[0].pid = 0;
-    jobs_list[0].status = 'N';
-    memset(jobs_list[0].cmd, '\0', strlen(jobs_list[0].cmd));
-}
-
-/**
  * Manejador propio para la señal SIGCHLD
  */
 void reaper(int sig_num)
@@ -621,7 +633,7 @@ void reaper(int sig_num)
     // Establecemos el job_list a 0, como anteriormente
     jobs_list[0].pid = 0;
     jobs_list[0].status = 'F';
-    //jobs_list[0].cmd = 
+    //jobs_list[0].cmd =
 
     while ((ended = waitpid(-1, &status, WNOHANG)) > 0)
     {
@@ -645,29 +657,33 @@ void reaper(int sig_num)
  */
 void ctrlc(int signum)
 {
+    signal(SIGINT, ctrlc);
+
     // Si es un proceso hijo
     if (jobs_list[0].pid > 0)
     {
         // Verificamos si es la minishell
-        if (strcmp(jobs_list[0].cmd, comand))
+        if (strcmp(jobs_list[0].cmd, miniShell))
         {
             kill(jobs_list[0].pid, SIGTERM);
         }
         else
         {
-#if DEBUG4
-            fprintf(stderr, "\nSeñal SIGTERM no enviada debido a que el proceso en foreground es el shell");
-#endif
+            #if DEBUG4
+                fprintf(stderr, "\nSeñal SIGTERM no enviada debido a que el proceso en foreground es el shell\n");
+            #endif
         }
     }
     else
     {
-#if DEBUG4
-        fprintf(stderr, "\nSeñal SIGTERM no enviada debido a que no hay proceso en foreground");
-#endif
+        #if DEBUG4
+            fprintf(stderr, "\nSeñal SIGTERM no enviada debido a que no hay proceso en foreground\n");
+        #endif
     }
 
-    signal(SIGINT, ctrlc);
+    printf("\n");
+    fflush(stdout);
+
 }
 
 /**
@@ -719,8 +735,8 @@ char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nue
 
     return result;
 }
-
-void delate_jobs(struct info_process *list[], struct info_process nuevo)
+/*
+void delate_jobs(struct info_process *list[], struct info_process toDelate)
 {
 }
 
@@ -729,6 +745,7 @@ void add_job(struct info_process *list[], struct info_process nuevo)
     int size;
     for (size = 0; list[size] != NULL; size++)
     {
-    nuevo.pid = list[size]->pid;
     }
+    
 }
+*/
