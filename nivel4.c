@@ -224,7 +224,7 @@ int execute_line(char *line)
                         exit(EXIT_FAILURE);
                     }
                     // Salimos sin errores (Terminación Normal)
-
+                    /*
                     // Padre arriba
                     jobs_list[0].pid = getppid();
                     jobs_list[0].status = 'E';
@@ -233,6 +233,7 @@ int execute_line(char *line)
                     jobs_list[1].pid = getpid();
                     jobs_list[1].status = 'D';
                     strcpy(jobs_list[1].cmd, line);
+                    */
 
                     exit(EXIT_SUCCESS);
                 }
@@ -264,6 +265,15 @@ int execute_line(char *line)
                         printf("[El proceso hijo %d ha finalizado por final, estado: %d]\n", pid, WTERMSIG(state));
 #endif
                     }
+
+                    // Padre arriba
+                    jobs_list[0].pid = getppid();
+                    jobs_list[0].status = 'E';
+                    strcpy(jobs_list[0].cmd, miniShell);
+                    // Hijo abajo
+                    jobs_list[1].pid = getpid();
+                    jobs_list[1].status = 'D';
+                    strcpy(jobs_list[1].cmd, line);
                 }
                 //Error de fork()
                 else
@@ -669,21 +679,20 @@ void ctrlc(int signum)
         }
         else
         {
-            #if DEBUG4
-                fprintf(stderr, "\nSeñal SIGTERM no enviada debido a que el proceso en foreground es el shell\n");
-            #endif
+#if DEBUG4
+            fprintf(stderr, "\nSeñal SIGTERM no enviada debido a que el proceso en foreground es el shell\n");
+#endif
         }
     }
     else
     {
-        #if DEBUG4
-            fprintf(stderr, "\nSeñal SIGTERM no enviada debido a que no hay proceso en foreground\n");
-        #endif
+#if DEBUG4
+        fprintf(stderr, "\nSeñal SIGTERM no enviada debido a que no hay proceso en foreground\n");
+#endif
     }
 
     printf("\n");
     fflush(stdout);
-
 }
 
 /**
