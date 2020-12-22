@@ -730,7 +730,7 @@ void ctrlc(int signum)
     if (jobs_list[0].pid > 0)
     {
         // Verificamos si es la minishell
-        if (!strcmp(jobs_list[0].cmd, mini_shell.cmd))
+        if (strcmp(jobs_list[0].cmd, mini_shell.cmd))
         {
             kill(jobs_list[0].pid, SIGTERM);
         }
