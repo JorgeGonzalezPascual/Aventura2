@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
     signal(SIGTSTP, ctrlz);
 
     //Inicializamos la pila de jobs_list
-    jobs_list[FOREGROUND].pid = 0;
+    jobs_list[FOREGROUND].pid = FOREGROUND;
     jobs_list[FOREGROUND].status = NONE;
     memset(jobs_list[FOREGROUND].cmd, '\0', strlen(jobs_list[FOREGROUND].cmd));
 
@@ -216,6 +216,7 @@ int execute_line(char *line)
         int bckgrd = is_background(line);
         //Copiamos en la "pila" la línea sin el caracter "\n" antes de parsear
         borradorCaracter(line, '\n');
+        borradorCaracter(line, '\r');
         strcpy(jobs_list[0].cmd, line);
 
         //Parseamos
@@ -241,12 +242,15 @@ int execute_line(char *line)
                     #endif
 
                     //Si el proceso esta en backgroud
+                    /*
                     if (bckgrd){
                         signal(SIGTSTP, SIG_IGN);
                     }
                     else{
                         signal(SIGTSTP, SIG_DFL);
                     }
+                    */ 
+                    signal(SIGTSTP, SIG_IGN);
 
                     // Asignamos la acción por defecto al SIGCHLD
                     signal(SIGCHLD, SIG_DFL);
@@ -263,15 +267,27 @@ int execute_line(char *line)
                 //Padre
                 else if (pid > 0)
                 {
-                    //Copiamos el padre en la pila
-                    jobs_list[0].pid = pid;
-                    jobs_list[0].status = 'E';
-                    strcpy(jobs_list[0].cmd, line);
-
-                    // Mientras haya un proceso foreground
-                    while (jobs_list[0].pid > 0)
-                    {
-                        pause();
+                    //Si es background
+                    if(bckgrd == 1 ){
+                        #if DEBUG5
+                            printf("Es un proceso en backgroud\n");
+                        #endif
+                        jobs_list_add(pid,EXECUTED,line);
+                    }
+                    else{
+                        //Copiamos el padre en la pila
+                        jobs_list[FOREGROUND].pid = pid;
+                        jobs_list[FOREGROUND].status = 'E';
+                        //strcpy(jobs_list[FOREGROUND].cmd, line);
+                        memset(jobs_list[FOREGROUND].cmd, '\0', strlen(jobs_list[FOREGROUND].cmd));
+                        //////////////////////////////////////////////
+                        //Podriamos hacer un add?/////////////////////
+                        
+                        // Mientras haya un proceso foreground
+                        while (jobs_list[FOREGROUND].pid > 0)
+                        {
+                            pause();
+                        }
                     }
                 }
                 // Error de fork()
@@ -304,9 +320,6 @@ int is_background(char *line)
     if (line[numeroLetras - 2] == '&')
     {
         line[numeroLetras - 2] = '\0';
-#if DEBUG5
-        printf("Es un proceso en backgroud\n");
-#endif
         return 1;
     }
     else
