@@ -166,17 +166,11 @@ char *read_line(char *line)
         printf("\r\n");
         if (feof(stdin))
         {
-#if DEBUG3
-            printf("Adeu\n");
-#endif
+            #if DEBUG3
+                printf("Adeu\n");
+            #endif
             exit(0);
         }
-        /*
-        else
-        {
-            perror("Error");
-        }
-        */
     }
 
     return line;
@@ -187,6 +181,7 @@ char *read_line(char *line)
  */
 int execute_line(char *line)
 {
+    char cmd[COMMAND_LINE_SIZE];
     //Reservamos memoria para los tokens
     char **args = malloc(sizeof(char *) * ARGS_SIZE);
 
@@ -194,9 +189,9 @@ int execute_line(char *line)
     {
         int bckgrd = is_background(line);
 
-        //Copiamos en una variable global el mini
+        //Copiamos en una variable el Mini Shell
         borradorCaracter(line, '\n');
-        char *cmd = line;
+        strcpy(cmd, line);
 
         //Parseamos
         parse_args(args, line);
@@ -221,7 +216,7 @@ int execute_line(char *line)
                     // Asignamos la acción por defecto al SIGCHLD
                     signal(SIGCHLD, SIG_DFL);
 
-                    // Ignoramos la señal SIGINY
+                    // Ignoramos la señal SIGINT
                     signal(SIGINT, SIG_IGN);
 
                     execvp(args[0], args);
@@ -238,6 +233,7 @@ int execute_line(char *line)
                         #if DEBUG5
                             printf("Es un proceso en backgroud\n");
                         #endif
+                        
                         jobs_list_add(pid,EXECUTED,cmd);
                     }
                     else{
@@ -268,6 +264,7 @@ int execute_line(char *line)
         fprintf(stderr, "Memoria dinámica llena.\n");
     }
     //Liberamos memoria
+    memset(line, '\0', COMMAND_LINE_SIZE);
     free(args);
 
     return EXIT_SUCCESS;
@@ -600,7 +597,7 @@ int internal_fg(char **args)
         
         if (job_index > 0 && job_index <= active_jobs)            
         {
-            // Si el trabajo está parado, enviamos la señal para efectuarlo
+            // Si el trabajo está parado, enviamos la señal para ejectuarlo
             if (jobs_list[job_index].status == STOPPED) 
             {
                 kill(jobs_list[job_index].pid, SIGCONT);
@@ -703,7 +700,7 @@ void reaper(int sig_num)
             if (WIFEXITED(status))
             {
                 #if DEBUG5
-                    printf("[reaper() -> Proceso hijo %d (ps f) en background (%s) finalizado con exit code %d]\n", ended, jobs_list[FOREGROUND].cmd, WEXITSTATUS(status));
+                    printf("[reaper() -> Proceso hijo %d (ps f) en foreground (%s) finalizado con exit code %d]\n", ended, jobs_list[FOREGROUND].cmd, WEXITSTATUS(status));
                 #endif
             }
 
@@ -737,7 +734,6 @@ void reaper(int sig_num)
                 #endif
             }
             printf("Proceso finalizado con PID %d (%s) en jobs_list[%d] con status %d\n", ended, jobs_list[posicion].cmd, posicion, status);
-
         }
     }
 }
@@ -940,8 +936,6 @@ int jobs_list_remove(int pos)
             jobs_list[pos].pid = jobs_list[active_jobs].pid;
             jobs_list[pos].status = jobs_list[active_jobs].status;
         }
-
-
 
         return EXIT_SUCCESS;
     }
