@@ -1,5 +1,4 @@
 // NIVEL 6
-
 #define _POSIX_C_SOURCE 200112L
 
 //Librerias
@@ -218,6 +217,7 @@ int execute_line(char *line)
                     // Ignoramos la señal SIGINT
                     signal(SIGINT, SIG_IGN);
                     
+                    is_output_redirection(args);
                     execvp(args[0], args);
 
                     // Terminación anormal
@@ -286,6 +286,28 @@ int is_background(char *line)
     {
         return 0;
     }
+}
+
+int is_output_redirection(char **args) 
+{
+    int outp = 0;
+    int args_path;
+    
+    for(int i = 0;(args[i] != NULL && outp == 0); i++){
+        if(strcmp(args[i],">") == 0){
+            if(strlen(args[i+1]) > 1){
+                args_path = i+1;
+                outp = 1;
+                args[i] = NULL;
+            }
+        }
+    }
+    if(outp == 1){
+        int fd = open(args[args_path], O_WRONLY | O_CREAT,S_IRUSR | S_IWUSR);
+        dup2(fd,1);
+        close(fd);
+    }
+    return outp;
 }
 
 /**
