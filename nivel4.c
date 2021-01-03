@@ -1,4 +1,10 @@
-// NIVEL 4
+/**
+ * Sistemas Operativos - AVENTURA 2
+ * 
+ * NIVEL 4
+ * 
+ * Jorge González Pascual - Lluís Barca Pons - Joan Martorell Ferriol
+ */
 
 //Librerias
 #include <stdio.h>
@@ -197,10 +203,6 @@ int execute_line(char *line)
                 // Hijo
                 if (pid == 0)
                 {
-#if DEBUG4
-                    printf("[execute_line() → PID padre: %d] (%s)\n", getppid(), jobs_list[1].cmd);
-                    printf("[execute_line() → PID hijo: %d] (%s)\n", getpid(), jobs_list[0].cmd);
-#endif
 
                     // Asignamos la acción por defecto al SIGCHLD
                     signal(SIGCHLD, SIG_DFL);
@@ -221,6 +223,11 @@ int execute_line(char *line)
                     jobs_list[0].pid = pid;
                     jobs_list[0].status = 'E';
                     strcpy(jobs_list[0].cmd, line);
+
+                    #if DEBUG4
+                        printf("[execute_line() → PID padre: %d] (%s)\n", getppid(), jobs_list[1].cmd);
+                        printf("[execute_line() → PID hijo: %d] (%s)\n", getpid(), jobs_list[0].cmd);
+                    #endif
 
                     // Mientras haya un proceso foreground
                     while (jobs_list[0].pid > 0)
@@ -706,17 +713,3 @@ char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nue
 
     return result;
 }
-/*
-void delate_jobs(struct info_process *list[], struct info_process toDelate)
-{
-}
-
-void add_job(struct info_process *list[], struct info_process nuevo)
-{
-    int size;
-    for (size = 0; list[size] != NULL; size++)
-    {
-    }
-    
-}
-*/

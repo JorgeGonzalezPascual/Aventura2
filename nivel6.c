@@ -1,7 +1,14 @@
-// NIVEL 6
+/**
+ * Sistemas Operativos - AVENTURA 2
+ * 
+ * NIVEL 1
+ * 
+ * Jorge González Pascual - Lluís Barca Pons - Joan Martorell Ferriol
+ */
+
 #define _POSIX_C_SOURCE 200112L
 
-//Librerias
+// Librerias
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -14,7 +21,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-//Constantes
+// Constantes
 #define DEBUG0 0
 #define DEBUG1 0
 #define DEBUG2 0
@@ -43,7 +50,7 @@
 #define COLOR_RESET "\x1b[0m"
 #define BLOND "\x1b[1m"
 
-//Variables
+// Variables
 // Estructura para almacenar los procesos
 struct info_process
 {
@@ -54,10 +61,9 @@ struct info_process
 
 static struct info_process jobs_list[N_JOBS];
 static int active_jobs = 1;
-//int n_pids;
 char mini_shell[COMMAND_LINE_SIZE];
 
-//Funciones
+// Funciones
 char *read_line(char *line);
 int execute_line(char *line);
 int parse_args(char **args, char *line);
@@ -75,7 +81,7 @@ void reaper(int signum);
 void ctrlc(int signum);
 void ctrlz(int signum);
 
-void borradorCaracter(char *args, char caracter);
+void characterEraser(char *args, char caracter);
 char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nuevaCadena);
 int is_background(char *line);
 int is_output_redirection(char **args);
@@ -86,10 +92,9 @@ int jobs_list_remove(int pos);
 
 /**
  * Main del programa
- **/
+ */
 int main(int argc, char *argv[])
 {
-
     // Inicializamos minishell
     strcpy(mini_shell, argv[0]);
 
@@ -118,7 +123,7 @@ int main(int argc, char *argv[])
 
 /**
  * Método para imprimir el PROMPT
-**/
+ */
 void imprimir_prompt()
 {
     // Obtenemos el nombre de usuario
@@ -127,7 +132,7 @@ void imprimir_prompt()
 
     if ((prompt = malloc((sizeof(char) * COMMAND_LINE_SIZE) - sizeof(user))))
     {
-        // Obtener el directorio de trabajo actual.
+        // Obtener el directorio de trabajo actual
         getcwd(prompt, COMMAND_LINE_SIZE);
         if (strcmp(prompt, getenv("HOME")))
         {
@@ -145,12 +150,13 @@ void imprimir_prompt()
         perror("Error");
     }
 
+    // Liberamos el flujo de salida de datos
     free(prompt);
     fflush(stdout);
 }
 
 /**
- * Leer una linea de la consola
+ * Método para eer una linea de la consola
  */
 char *read_line(char *line)
 {
@@ -158,10 +164,10 @@ char *read_line(char *line)
     char *ptr = fgets(line, COMMAND_LINE_SIZE, stdin);
 
     // Leer la entrada introducida en stdin por el usuario
-    // Control de errores
     if (ptr == NULL)
     {
         printf("\r\n");
+
         if (feof(stdin))
         {
             #if DEBUG3
@@ -175,7 +181,7 @@ char *read_line(char *line)
 }
 
 /**
- * 
+ * Método que efectua la ejecución de la linea leída
  */
 int execute_line(char *line)
 {
@@ -188,7 +194,8 @@ int execute_line(char *line)
         int bckgrd = is_background(line);
 
         // Copiamos en una variable el Mini Shell
-        borradorCaracter(line, '\n');
+        characterEraser
+    (line, '\n');
         strcpy(cmd, line);
 
         // Parseamos
@@ -204,11 +211,8 @@ int execute_line(char *line)
                 // Hijo
                 if (pid == 0)
                 {
-                    #if DEBUG4
-                        printf("[execute_line() → PID padre: %d] (%s)\n", getppid(), jobs_list[1].cmd);
-                        printf("[execute_line() → PID hijo: %d] (%s)\n", getpid(), jobs_list[0].cmd);
-                    #endif
 
+                    // Ignoramos la señal SIGSTP
                     signal(SIGTSTP, SIG_IGN);
 
                     // Asignamos la acción por defecto al SIGCHLD
@@ -228,19 +232,26 @@ int execute_line(char *line)
                 else if (pid > 0)
                 {
                     // Si es background
-                    if(bckgrd == 1 ){
+                    if(bckgrd == 1 )
+                    {
                         #if DEBUG5
                             printf("Es un proceso en backgroud\n");
                         #endif
                         
                         jobs_list_add(pid,EXECUTED,cmd);
                     }
-                    else{
+                    else
+                    {
                         // Copiamos el padre en la pila
                         jobs_list[FOREGROUND].pid = pid;
                         jobs_list[FOREGROUND].status = 'E';
                         strcpy(jobs_list[FOREGROUND].cmd, cmd);
                         
+                        #if DEBUG4
+                            printf("[execute_line() → PID padre: %d] (%s)\n", getppid(), jobs_list[1].cmd);
+                            printf("[execute_line() → PID hijo: %d] (%s)\n", getpid(), jobs_list[0].cmd);
+                        #endif
+
                         // Mientras haya un proceso foreground
                         while (jobs_list[FOREGROUND].pid > 0)
                         {
@@ -263,7 +274,7 @@ int execute_line(char *line)
         fprintf(stderr, "Memoria dinámica llena.\n");
     }
     
-    //Liberamos memoria
+    // Liberamos memoria
     memset(line, '\0', COMMAND_LINE_SIZE);
     free(args);
 
@@ -272,14 +283,15 @@ int execute_line(char *line)
 
 /**
  * Método que mira si es un comando en segundo plano, es decir que si tiene el & al final
- **/
+ */
 int is_background(char *line)
 {
     int numeroLetras = strlen(line);
 
     if (line[numeroLetras - 2] == '&')
     {
-        line[numeroLetras - 2] = '\0';
+        // Quitamos tambien el espacio antes del '&'
+        line[numeroLetras - 3] = '\0';
         return 1;
     }
     else
@@ -288,6 +300,9 @@ int is_background(char *line)
     }
 }
 
+/**
+ * Método que comprueba si es un redireccionamiento y si lo es, cambia el '>' por NULL
+ */ 
 int is_output_redirection(char **args) 
 {
     int outp = 0;
@@ -302,18 +317,19 @@ int is_output_redirection(char **args)
             }
         }
     }
+
     if(outp == 1){
         int fd = open(args[args_path], O_WRONLY | O_CREAT,S_IRUSR | S_IWUSR);
         dup2(fd,1);
         close(fd);
     }
+
     return outp;
 }
 
 /**
- * 
- * 
- **/
+ * Método que parsea divide la linea en tokens y elimina comentarios
+ */
 int parse_args(char **args, char *line)
 {
     int nToken = 0;
@@ -325,7 +341,6 @@ int parse_args(char **args, char *line)
 
     while (token != NULL)
     {
-
         #if DEBUG1
             printf("[parse_args() → token %d: %s]\n", nToken, token);
         #endif
@@ -345,7 +360,7 @@ int parse_args(char **args, char *line)
             #endif
         }
 
-        // Siguiete
+        // Siguiente
         token = strtok(NULL, s);
         nToken++;
     }
@@ -354,8 +369,8 @@ int parse_args(char **args, char *line)
 }
 
 /**
- * Chequeamos si es un comando interno
- **/
+ * Método que comprueba si es un comando interno
+ */
 int check_internal(char **args)
 {
     int comandoInterno = 0;
@@ -408,18 +423,12 @@ int check_internal(char **args)
 }
 
 /**
- * Función internal_cd
- * -----------------------------------------------------------------
- * Utiliza la llamada al sistema chdir() para cambiar de directorio
- * 
- * Input:
- * Output:
- **/
-
+ * Método que utiliza la llamada al sistema chdir() para cambiar de directorio
+ */
 int internal_cd(char **args)
 {
-    // falta control de error
     char *linea = malloc(sizeof(char) * COMMAND_LINE_SIZE);
+    
     if (linea == NULL)
     {
         fprintf(stderr, "No hay memoria dinámica disponible en este momento.\n");
@@ -437,29 +446,31 @@ int internal_cd(char **args)
 
     if (args[2] != NULL)
     {
-        //Miramos si es un caso escepcional
+        // Verificamos si es un caso escepcional
         int numeroLetrasArgs1 = strlen(args[1]);
         int permitido = 1;
-        // Miramos comilla o comillas
-
+    
         char *ruta;
         // Comilla
         if (args[1][0] == (char)sep[1])
         {
             ruta = strchr(linea, (char)(sep[1]));
-            borradorCaracter(ruta, (char)sep[1]);
+            characterEraser
+        (ruta, (char)sep[1]);
         }
         // Comillas
         else if (args[1][0] == (char)sep[2])
         {
             ruta = strchr(linea, (char)(sep[2]));
-            borradorCaracter(ruta, (char)sep[2]);
+            characterEraser
+        (ruta, (char)sep[2]);
         }
         // Barra
         else if (args[1][numeroLetrasArgs1 - 1] == (char)sep[0])
         {
             ruta = strchr(linea, args[1][0]);
-            borradorCaracter(ruta, (char)sep[0]);
+            characterEraser
+        (ruta, (char)sep[0]);
         }
         else
         {
@@ -500,9 +511,10 @@ int internal_cd(char **args)
 
 #if DEBUG0
     char *prompt;
+
     if ((prompt = malloc((sizeof(char) * COMMAND_LINE_SIZE))))
     {
-        // Gets the current work directory.
+        // Obtiene el directorio de trabajo actual
         getcwd(prompt, COMMAND_LINE_SIZE);
 
         printf("[internal_cd() → %s]\n", prompt);
@@ -520,9 +532,8 @@ int internal_cd(char **args)
 }
 
 /**
- * Función internal_export
- * 
- **/
+ * Método que modifica la variable env indicada en el args con el nuevo valor
+ */
 int internal_export(char **args)
 {
     const char *separador = "=";
@@ -554,6 +565,9 @@ int internal_export(char **args)
     return 1;
 }
 
+/**
+ * Método que hace posible la mútliple ejecución de comandos contenidos dentro de un fichero
+ */
 int internal_source(char **args)
 {
     // Creamos la variable y reservamos memoria para leer las lineas del fichero
@@ -564,7 +578,6 @@ int internal_source(char **args)
         // Declaramos, instanciamos y creamos el enlace al fichero a leer
         FILE *fichero = fopen(args[1], "r");
 
-        // Si existe el fichero
         if (fichero)
         {
             // Leemos las lineas y las ejecutamos
@@ -596,7 +609,9 @@ int internal_source(char **args)
     return 1;
 }
 
-
+/**
+ * Método que visualiza por pantalla todos los trabajos activos
+ */ 
 int internal_jobs(char **args)
 {
     int id = 1;
@@ -610,6 +625,9 @@ int internal_jobs(char **args)
     return EXIT_SUCCESS;
 }
 
+/**
+ * Método que mueve un trabajo al foreground y espera hasta acabar
+ */ 
 int internal_fg(char **args)
 {
     if (args[1]) 
@@ -626,7 +644,8 @@ int internal_fg(char **args)
                 kill(jobs_list[job_index].pid, SIGCONT);
             }
 
-            borradorCaracter(jobs_list[job_index].cmd, '&');
+            characterEraser
+        (jobs_list[job_index].cmd, '&');
 
             // Actualizamos el foreground con el trabajo actual
             jobs_list[FOREGROUND].pid = jobs_list[job_index].pid;
@@ -656,6 +675,9 @@ int internal_fg(char **args)
     return EXIT_FAILURE;
 }
 
+/**
+ * Método que continua cualquier trabajo parado en el background
+ */ 
 int internal_bg(char **args)
 {
     if (args[1]) 
@@ -699,6 +721,9 @@ int internal_bg(char **args)
     return EXIT_FAILURE;
 }
 
+/**
+ * Método que permite la finalización del programa
+ */ 
 int internal_exit(char **args)
 {
     exit(0);
@@ -706,7 +731,7 @@ int internal_exit(char **args)
 }
 
 /**
- * Manejador propio para la señal SIGCHLD
+ * Método que permite manejar la señal SIGCHLD
  */
 void reaper(int sig_num)
 {
@@ -769,7 +794,7 @@ void reaper(int sig_num)
 }
 
 /**
- * Manejador propio de la señal SIGINT(Ctrl + C)
+ * Método que permite manejar la señal SIGINT(Ctrl + C)
  */
 void ctrlc(int signum)
 {
@@ -800,10 +825,11 @@ void ctrlc(int signum)
     // Limpiamos el flujo de salida
     printf("\n");
     fflush(stdout);
-
-    //imprimir_prompt();
 }
 
+/**
+ * Método que permite manejar la señal SIGSTP(Ctrl + Z)
+ */ 
 void ctrlz(int signum)
 {   
     signal(SIGTSTP, ctrlz);
@@ -811,6 +837,7 @@ void ctrlz(int signum)
     #if DEBUG5
         printf("\n[ctrlz() -> Soy el proceso con PID %d, el proceso en foreground es %d (%s)]\n", getpid(), jobs_list[FOREGROUND].pid, jobs_list[FOREGROUND].cmd);
     #endif
+
     // Comprobamos si se trata de un proceso en foreground
     if (jobs_list[FOREGROUND].pid > FOREGROUND)
     {
@@ -846,8 +873,11 @@ void ctrlz(int signum)
     fflush(stdout);
 }
 
-
 /// Operadores de la PILA jobs_list[] ///
+
+/**
+ * Método que añade un nuevo trabajo a la última posición de jobs_list y actualiza active_jobs
+ */ 
 int jobs_list_add(pid_t pid, char status, char *cmd)
 {
     if (active_jobs < N_JOBS)
@@ -867,6 +897,9 @@ int jobs_list_add(pid_t pid, char status, char *cmd)
     }
 }
 
+/**
+ * Método que busca y devuelve la posición del trabajo en la pila jobs_list
+ */ 
 int jobs_list_find(pid_t pid)
 {
     for (int i = 1; i < N_JOBS; i++)
@@ -879,6 +912,9 @@ int jobs_list_find(pid_t pid)
     return -1;
 }
 
+/**
+ * Método que elimina un trabajo de la lista y añade el último active_job en la posición correspondiente
+ */ 
 int jobs_list_remove(int pos)
 {
     if (pos > 0 && pos < N_JOBS)
@@ -909,8 +945,8 @@ int jobs_list_remove(int pos)
 
 /**
  * Método que borra un caracter de un "array/puntero"
- **/
-void borradorCaracter(char *args, char caracter)
+ */
+void characterEraser(char *args, char caracter)
 {
     int index = 0;
     int new_index = 0;
@@ -922,14 +958,16 @@ void borradorCaracter(char *args, char caracter)
             args[new_index] = args[index];
             new_index++;
         }
+
         index++;
     }
+
     args[new_index] = '\0';
 }
 
 /**
  * Método para remplazar una subcadena por otra subcadena en una cadena
- **/
+ */
 char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nuevaCadena)
 {
     char *result;
@@ -937,26 +975,24 @@ char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nue
     int newWlen = strlen(nuevaCadena);
     int oldWlen = strlen(cadenaAntigua);
 
-    // Contando el número de veces palabra antigua
-    // que sale en el String
+    // Contando el número de veces palabra antigua que sale en el String
     for (i = 0; cadena[i] != '\0'; i++)
     {
         if (strstr(&cadena[i], cadenaAntigua) == &cadena[i])
         {
             cnt++;
-            //Saltar al índice después de la palabra antigua.
+            // Saltar al índice después de la palabra antigua.
             i += oldWlen - 1;
         }
     }
 
-    //Reserva de espacio suficiente para la nueva cadena
+    // Reserva de espacio suficiente para la nueva cadena
     if ((result = malloc(i + cnt * (newWlen - oldWlen) + 1)))
     {
-
         i = 0;
         while (*cadena)
         {
-            //Comparar la subcadena con el resultado
+            // Comparar la subcadena con el resultado
             if (strstr(cadena, cadenaAntigua) == cadena)
             {
                 strcpy(&result[i], nuevaCadena);
@@ -964,7 +1000,9 @@ char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nue
                 cadena += oldWlen;
             }
             else
+            {
                 result[i++] = *cadena++;
+            }
         }
 
         result[i] = '\0';

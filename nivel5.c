@@ -1,4 +1,10 @@
-// NIVEL 6
+/**
+ * Sistemas Operativos - AVENTURA 2
+ * 
+ * NIVEL 5
+ * 
+ * Jorge González Pascual - Lluís Barca Pons - Joan Martorell Ferriol
+ **/
 
 #define _POSIX_C_SOURCE 200112L
 
@@ -20,7 +26,7 @@
 #define DEBUG1 0
 #define DEBUG2 0
 #define DEBUG3 0
-#define DEBUG4 0
+#define DEBUG4 1
 #define DEBUG5 1
 
 #define COMMAND_LINE_SIZE 1024
@@ -76,7 +82,7 @@ void reaper(int signum);
 void ctrlc(int signum);
 void ctrlz(int signum);
 
-void borradorCaracter(char *args, char caracter);
+void characterEraser(char *args, char caracter);
 char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nuevaCadena);
 int is_background(char *line);
 int is_output_redirection(char **args);
@@ -171,8 +177,17 @@ char *read_line(char *line)
             exit(0);
         }
     }
-
     return line;
+}
+
+void contarPalabras(char cadena[])
+{
+    int i, contPalabras = 1;
+    for(i = 0; i < strlen(cadena); i++)
+          if(cadena[i] == ' ' && i > 0 && cadena[i - 1] != ' ')
+               contPalabras++;
+ 
+     printf("Cantidad de palabras: %d\n", contPalabras);
 }
 
 /**
@@ -183,13 +198,14 @@ int execute_line(char *line)
     char cmd[COMMAND_LINE_SIZE];
     // Reservamos memoria para los tokens
     char **args = malloc(sizeof(char *) * ARGS_SIZE);
+    contarPalabras(line);
 
     if (args != NULL)
     {
         int bckgrd = is_background(line);
 
         // Copiamos en una variable el Mini Shell
-        borradorCaracter(line, '\n');
+        characterEraser(line, '\n');
         strcpy(cmd, line);
 
         // Parseamos
@@ -199,17 +215,14 @@ int execute_line(char *line)
         {
             if (!check_internal(args))
             {
+
                 int state;
                 pid_t pid = fork();
 
                 // Hijo
                 if (pid == 0)
                 {
-                    #if DEBUG4
-                        printf("[execute_line() → PID padre: %d] (%s)\n", getppid(), jobs_list[1].cmd);
-                        printf("[execute_line() → PID hijo: %d] (%s)\n", getpid(), jobs_list[0].cmd);
-                    #endif
-
+                    // Ignoramos la señal SIGSTP
                     signal(SIGTSTP, SIG_IGN);
 
                     // Asignamos la acción por defecto al SIGCHLD
@@ -217,6 +230,11 @@ int execute_line(char *line)
 
                     // Ignoramos la señal SIGINT
                     signal(SIGINT, SIG_IGN);
+
+                    for (int i = 0; args[i]; i++)
+                    {
+                        fprintf(stderr, "args: %s\n", args[i]);
+                    }
                     
                     execvp(args[0], args);
 
@@ -240,6 +258,11 @@ int execute_line(char *line)
                         jobs_list[FOREGROUND].pid = pid;
                         jobs_list[FOREGROUND].status = 'E';
                         strcpy(jobs_list[FOREGROUND].cmd, cmd);
+
+                        #if DEBUG4
+                            printf("[execute_line() → PID padre: %d] (%s)\n", getppid(), mini_shell);
+                            printf("[execute_line() → PID hijo: %d] (%s)\n", getpid(), jobs_list[FOREGROUND].cmd);
+                        #endif
                         
                         // Mientras haya un proceso foreground
                         while (jobs_list[FOREGROUND].pid > 0)
@@ -262,7 +285,6 @@ int execute_line(char *line)
     {
         fprintf(stderr, "Memoria dinámica llena.\n");
     }
-    
     //Liberamos memoria
     memset(line, '\0', COMMAND_LINE_SIZE);
     free(args);
@@ -279,7 +301,8 @@ int is_background(char *line)
 
     if (line[numeroLetras - 2] == '&')
     {
-        line[numeroLetras - 2] = '\0';
+        //Quitamos tambien el espacio antes del '&'
+        line[numeroLetras - 3] = '\0';
         return 1;
     }
     else
@@ -323,7 +346,7 @@ int parse_args(char **args, char *line)
             #endif
         }
 
-        // Siguiete
+        // Siguiente
         token = strtok(NULL, s);
         nToken++;
     }
@@ -336,6 +359,14 @@ int parse_args(char **args, char *line)
  **/
 int check_internal(char **args)
 {
+
+/*
+    for (int i = 0; args[i]; i++)
+    {
+        fprintf(stderr, "args %d: %s\n",i , args[i]);
+    }
+*/
+
     int comandoInterno = 0;
 
     const char cd[] = "cd";
@@ -406,11 +437,12 @@ int internal_cd(char **args)
     // Concatenamos los args
     for (int i = 0; args[i]; i++)
     {
-        strcat(linea, " ");
+        
         strcat(linea, args[i]);
+        strcat(linea, " ");
     }
 
-    // Separadores en ASCII: barra,comillas, comilla, espacio
+    // Separadores en ASCII: barra, comillas, comilla, espacio
     const int sep[] = {92, 34, 39, 32};
 
     if (args[2] != NULL)
@@ -425,19 +457,19 @@ int internal_cd(char **args)
         if (args[1][0] == (char)sep[1])
         {
             ruta = strchr(linea, (char)(sep[1]));
-            borradorCaracter(ruta, (char)sep[1]);
+            characterEraser(ruta, (char)sep[1]);
         }
         // Comillas
         else if (args[1][0] == (char)sep[2])
         {
             ruta = strchr(linea, (char)(sep[2]));
-            borradorCaracter(ruta, (char)sep[2]);
+            characterEraser(ruta, (char)sep[2]);
         }
         // Barra
         else if (args[1][numeroLetrasArgs1 - 1] == (char)sep[0])
         {
             ruta = strchr(linea, args[1][0]);
-            borradorCaracter(ruta, (char)sep[0]);
+            characterEraser(ruta, (char)sep[0]);
         }
         else
         {
@@ -604,7 +636,7 @@ int internal_fg(char **args)
                 kill(jobs_list[job_index].pid, SIGCONT);
             }
 
-            borradorCaracter(jobs_list[job_index].cmd, '&');
+            characterEraser(jobs_list[job_index].cmd, '&');
 
             // Actualizamos el foreground con el trabajo actual
             jobs_list[FOREGROUND].pid = jobs_list[job_index].pid;
@@ -698,17 +730,11 @@ void reaper(int sig_num)
         // Si es un proceso en foreground
         if (ended == jobs_list[FOREGROUND].pid)
         {
-            
-            // Reseteamos el jobs_list[FOREGROUND]
-            jobs_list[FOREGROUND].pid = FOREGROUND;
-            jobs_list[FOREGROUND].status = NONE;
-            memset(jobs_list[FOREGROUND].cmd, '\0', strlen(jobs_list[FOREGROUND].cmd));
-
             // Si el proceso ha finalizado solo
             if (WIFEXITED(status))
             {
                 #if DEBUG5
-                    printf("[reaper() -> Proceso hijo %d (ps f) en foreground (%s) finalizado con exit code %d]\n", ended, jobs_list[FOREGROUND].cmd, WEXITSTATUS(status));
+                    printf("\n[reaper() -> Proceso hijo %d (ps f) en foreground (%s) finalizado con exit code %d]\n", ended, jobs_list[FOREGROUND].cmd, WEXITSTATUS(status));
                 #endif
             }
 
@@ -716,9 +742,14 @@ void reaper(int sig_num)
             else if (WIFSIGNALED(status))
             {
                 #if DEBUG5
-                    printf("[Proceso hijo %d (ps f) en background (%s) finalizado con exit code %d]\n", ended, jobs_list[FOREGROUND].cmd, WTERMSIG(status));
+                    printf("\n[Proceso hijo %d (ps f) en foreground (%s) finalizado con exit code %d]\n", ended, jobs_list[FOREGROUND].cmd, WTERMSIG(status));
                 #endif
             }
+
+            // Reseteamos el jobs_list[FOREGROUND]
+            jobs_list[FOREGROUND].pid = FOREGROUND;
+            jobs_list[FOREGROUND].status = NONE;
+            memset(jobs_list[FOREGROUND].cmd, '\0', strlen(jobs_list[FOREGROUND].cmd));
         }
 
         // Si es un proceso en background
@@ -726,22 +757,23 @@ void reaper(int sig_num)
         {
             int posicion = jobs_list_find(ended);
 
-            // Eliminamos el proceso de la pila
-            jobs_list_remove(posicion);
-
             if (WIFEXITED(status))
             {
                 #if DEBUG5
-                    printf("[reaper() -> Proceso hijo %d (ps f) en background (%s) finalizado con exit code %d]\n", ended, jobs_list[posicion].cmd, WEXITSTATUS(status));
+                    printf("\n[reaper() -> Proceso hijo %d (ps f) en background (%s) finalizado con exit code %d]\n", ended, jobs_list[posicion].cmd, WEXITSTATUS(status));
                 #endif
             }
             else if (WIFSIGNALED(status))
             {
                 #if DEBUG5
-                    printf("[Proceso hijo %d (ps f) en background (%s) finalizado con exit code %d]\n", ended, jobs_list[posicion].cmd, WTERMSIG(status));
+                    printf("\n[Proceso hijo %d (ps f) en background (%s) finalizado con exit code %d]\n", ended, jobs_list[posicion].cmd, WTERMSIG(status));
                 #endif
             }
             printf("Proceso finalizado con PID %d (%s) en jobs_list[%d] con status %d\n", ended, jobs_list[posicion].cmd, posicion, status);
+            
+            // Eliminamos el proceso de la pila
+            jobs_list_remove(posicion);
+
         }
     }
 }
@@ -752,6 +784,13 @@ void reaper(int sig_num)
 void ctrlc(int signum)
 {
     signal(SIGINT, ctrlc);
+
+    #if DEBUG5
+        printf("\n[ctrlc() → Soy el proceso con PID %d (%s), el proceso en "
+            "foreground es %d(%s)]\n",
+            getpid(), mini_shell, jobs_list[FOREGROUND].pid,
+            jobs_list[FOREGROUND].cmd);
+    #endif
 
     // Si es un proceso hijo
     if (jobs_list[0].pid > 0)
@@ -778,8 +817,6 @@ void ctrlc(int signum)
     // Limpiamos el flujo de salida
     printf("\n");
     fflush(stdout);
-
-    //imprimir_prompt();
 }
 
 void ctrlz(int signum)
@@ -888,7 +925,7 @@ int jobs_list_remove(int pos)
 /**
  * Método que borra un caracter de un "array/puntero"
  **/
-void borradorCaracter(char *args, char caracter)
+void characterEraser(char *args, char caracter)
 {
     int index = 0;
     int new_index = 0;

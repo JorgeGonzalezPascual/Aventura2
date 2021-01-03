@@ -1,4 +1,10 @@
-//NIVEL 1 
+/**
+ * Sistemas Operativos - AVENTURA 2
+ * 
+ * NIVEL 1
+ * 
+ * Jorge González Pascual - Lluís Barca Pons - Joan Martorell Ferriol
+ */
 
 #include <stdio.h>
 #include <string.h>

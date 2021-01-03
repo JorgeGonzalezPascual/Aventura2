@@ -1,4 +1,10 @@
-// NIVEL 3
+/**
+ * Sistemas Operativos - AVENTURA 2
+ * 
+ * NIVEL 3
+ * 
+ * Jorge González Pascual - Lluís Barca Pons - Joan Martorell Ferriol
+ */
 
 //Librerias
 #include <stdio.h>
