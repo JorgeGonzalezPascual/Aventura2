@@ -193,9 +193,8 @@ int execute_line(char *line)
     {
         int bckgrd = is_background(line);
 
-        // Copiamos en una variable el Mini Shell
-        characterEraser
-    (line, '\n');
+        // Copiamos en una variable el comando sin parsear
+        characterEraser(line, '\n');
         strcpy(cmd, line);
 
         // Parseamos

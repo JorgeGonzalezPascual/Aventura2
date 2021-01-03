@@ -371,6 +371,7 @@ int internal_cd(char **args)
         }
         else
         {
+            fprintf(stderr, "ruta: %s\n",ruta);
             if (chdir(ruta))
             {
                 perror("Error");
