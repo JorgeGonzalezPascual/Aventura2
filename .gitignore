@@ -31,6 +31,7 @@ gonzalez_barca_martorell
 */gonzalez_barca_martorell/
 */vscode/
 *.gz
+*.gitignore
 
 # Kernel Module Compile Results
 *.mod*
