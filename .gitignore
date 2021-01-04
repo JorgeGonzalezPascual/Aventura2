@@ -23,6 +23,19 @@
 *.x86_64
 *.hex
 
+#Carpetas
+gonzalez_barca_martorell/
+.vscode/
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
+
 # SIN EXTENSIÓN
 *
 !/**/
