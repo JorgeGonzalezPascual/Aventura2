@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
     // Inicializamos la pila de jobs_list
     jobs_list[FOREGROUND].pid = FOREGROUND;
     jobs_list[FOREGROUND].status = NONE;
-    memset(jobs_list[FOREGROUND].cmd, '\0', strlen(jobs_list[FOREGROUND].cmd));
+    memset(jobs_list[FOREGROUND].cmd, '\0', sizeof(jobs_list[FOREGROUND].cmd));
 
     char *cmd = (char *)malloc(sizeof(char) * COMMAND_LINE_SIZE);
 
@@ -231,17 +231,18 @@ int execute_line(char *line)
                     // Ignoramos la señal SIGINT
                     signal(SIGINT, SIG_IGN);
 
-                    /*
+                    
                     for (int i = 0; args[i]; i++)
                     {
                         fprintf(stderr, "args: %s\n", args[i]);
                     }
-                    */
+                    
                     
                     execvp(args[0], args);
 
                     // Terminación anormal
                     fprintf(stderr, "Error al leer el comando externo: %s.\n", args[0]);
+                    fflush(stderr);
                     exit(EXIT_FAILURE);
                 }
                 // Padre
@@ -262,8 +263,8 @@ int execute_line(char *line)
                         strcpy(jobs_list[FOREGROUND].cmd, cmd);
 
                         #if DEBUG4
-                            printf("[execute_line() → PID padre: %d] (%s)\n", getppid(), mini_shell);
-                            printf("[execute_line() → PID hijo: %d] (%s)\n", getpid(), jobs_list[FOREGROUND].cmd);
+                            printf("[execute_line() → PID padre: %d] (%s)\n", getpid(), mini_shell);
+                            printf("[execute_line() → PID hijo: %d] (%s)\n", pid, jobs_list[FOREGROUND].cmd);
                         #endif
                         
                         // Mientras haya un proceso foreground
@@ -318,42 +319,35 @@ int is_background(char *line)
  * 
  **/
 int parse_args(char **args, char *line)
-{
-    int nToken = 0;
-    const char s[5] = " \t\r\n";
-    char *token;
+{   
+    char lineaux[COMMAND_LINE_SIZE];
+    strcpy(lineaux, line);  // Dejamos line sin modificar con el comando entero
+    int i = 0;
+    char *token = strtok(lineaux, " \n\r\t");
 
-    token = strtok(line, s);
-    args[nToken] = token;
+    while (token != NULL) {
 
-    while (token != NULL)
-    {
+        args[i] = token;
 
-        #if DEBUG1
-            printf("[parse_args() → token %d: %s]\n", nToken, token);
-        #endif
+        printf("[parse_args() --> token%i = %s] \n",i,token);
 
-        // Descartamos comentarios
-        if (*(token) != '#')
-        {
-            args[nToken] = token;
-        }
-        else
-        {
-            // Añadimos NULL
-            token = NULL;
-            args[nToken] = token;
-            #if DEBUG1
-                printf("[parse_args() → token %d corregido: %s]\n", nToken, token);
-            #endif
+        // Si no es un comentario lo añadimos como argumento
+        if (strncmp(args[i],"#",1) == 0) { 
+
+            break;   
         }
 
-        // Siguiente
-        token = strtok(NULL, s);
-        nToken++;
+        i++;
+        // Ponemos NULL para no sobreescribir
+        token = strtok(NULL, " \n\r\t");
     }
 
-    return nToken;
+    // Null al final, ya que no habrá nada más que trocear
+    args[i] =  0; 
+    // Le quitamos el salto de línea a line
+    strtok(line, "\n\r"); 
+
+    return i;    
 }
 
 /**
@@ -429,53 +423,53 @@ int check_internal(char **args)
 
 int internal_cd(char **args)
 {
-    // falta control de error
     char *linea = malloc(sizeof(char) * COMMAND_LINE_SIZE);
+    
     if (linea == NULL)
     {
         fprintf(stderr, "No hay memoria dinámica disponible en este momento.\n");
     }
 
+    int nArgs = 0;
+
     // Concatenamos los args
     for (int i = 0; args[i]; i++)
     {
-        
-        strcat(linea, args[i]);
         strcat(linea, " ");
+        strcat(linea, args[i]);
+        nArgs++;
     }
 
-    // Separadores en ASCII: barra, comillas, comilla, espacio
+    // Separadores en ASCII: barra,comillas, comilla, espacio
     const int sep[] = {92, 34, 39, 32};
 
-    if (args[2] != NULL)
+    // Verificamos si es un caso escepcional
+    if (nArgs > 2)
     {
-        //Miramos si es un caso escepcional
         int numeroLetrasArgs1 = strlen(args[1]);
-        int permitido = 1;
-        // Miramos comilla o comillas
-
+        int permitido = 0;
+    
         char *ruta;
-        // Comilla
+        // Comillas
         if (args[1][0] == (char)sep[1])
         {
             ruta = strchr(linea, (char)(sep[1]));
             characterEraser(ruta, (char)sep[1]);
+            permitido = 1;
         }
-        // Comillas
+        // Comilla
         else if (args[1][0] == (char)sep[2])
         {
             ruta = strchr(linea, (char)(sep[2]));
             characterEraser(ruta, (char)sep[2]);
+            permitido = 1;
         }
         // Barra
         else if (args[1][numeroLetrasArgs1 - 1] == (char)sep[0])
         {
             ruta = strchr(linea, args[1][0]);
             characterEraser(ruta, (char)sep[0]);
-        }
-        else
-        {
-            permitido = 0;
+            permitido = 1;
         }
 
         // Si se permiten 2 palabras después del cd
@@ -494,7 +488,7 @@ int internal_cd(char **args)
     // Si es una palabra
     else
     {
-        if (args[1] == NULL)
+        if (nArgs == 1)       
         {
             if (chdir(getenv("HOME")))
             {
@@ -509,12 +503,13 @@ int internal_cd(char **args)
             }
         }
     }
-
+    
 #if DEBUG0
     char *prompt;
+
     if ((prompt = malloc((sizeof(char) * COMMAND_LINE_SIZE))))
     {
-        // Gets the current work directory.
+        // Obtiene el directorio de trabajo actual
         getcwd(prompt, COMMAND_LINE_SIZE);
 
         printf("[internal_cd() → %s]\n", prompt);
@@ -736,7 +731,7 @@ void reaper(int sig_num)
             if (WIFEXITED(status))
             {
                 #if DEBUG5
-                    printf("\n[reaper() -> Proceso hijo %d (ps f) en foreground (%s) finalizado con exit code %d]\n", ended, jobs_list[FOREGROUND].cmd, WEXITSTATUS(status));
+                    printf("\n[reaper() -> Proceso hijo %d en foreground (%s) finalizado con exit code %d]\n", ended, jobs_list[FOREGROUND].cmd, WEXITSTATUS(status));
                 #endif
             }
 
@@ -751,7 +746,7 @@ void reaper(int sig_num)
             // Reseteamos el jobs_list[FOREGROUND]
             jobs_list[FOREGROUND].pid = FOREGROUND;
             jobs_list[FOREGROUND].status = NONE;
-            memset(jobs_list[FOREGROUND].cmd, '\0', strlen(jobs_list[FOREGROUND].cmd));
+            memset(jobs_list[FOREGROUND].cmd, '\0', sizeof(jobs_list[FOREGROUND].cmd));
         }
 
         // Si es un proceso en background
@@ -787,6 +782,8 @@ void ctrlc(int signum)
 {
     signal(SIGINT, ctrlc);
 
+    iPila(FOREGROUND);
+
     #if DEBUG5
         printf("\n[ctrlc() → Soy el proceso con PID %d (%s), el proceso en "
             "foreground es %d(%s)]\n",
@@ -819,11 +816,15 @@ void ctrlc(int signum)
     // Limpiamos el flujo de salida
     printf("\n");
     fflush(stdout);
+
+    fprintf(stderr, "\nFINISH");
 }
 
 void ctrlz(int signum)
 {   
     signal(SIGTSTP, ctrlz);
+
+    iPila(FOREGROUND);
     
     #if DEBUG5
         printf("\n[ctrlz() -> Soy el proceso con PID %d, el proceso en foreground es %d (%s)]\n", getpid(), jobs_list[FOREGROUND].pid, jobs_list[FOREGROUND].cmd);
@@ -848,7 +849,7 @@ void ctrlz(int signum)
             // Actualizamos el foreground con sus propiedades de serie (Reset)
             jobs_list[FOREGROUND].pid = FOREGROUND;
             jobs_list[FOREGROUND].status = NONE;
-            memset(jobs_list[FOREGROUND].cmd, '\0', strlen(jobs_list[FOREGROUND].cmd));
+            memset(jobs_list[FOREGROUND].cmd, '\0', sizeof(jobs_list[FOREGROUND].cmd));
 
         } else{
             // Visualizamos el error
@@ -991,4 +992,11 @@ char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nue
     }
 
     return result;
+}
+
+
+void iPila(int p){
+    fprintf(stderr, "\njobs_list[%d].pid = %d\n", p, jobs_list[p].pid);
+    fprintf(stderr, "jobs_list[%d].status = %c\n", p, jobs_list[p].status);
+    fprintf(stderr, "jobs_list[%d].cmd = %s\n", p, jobs_list[p].cmd);
 }

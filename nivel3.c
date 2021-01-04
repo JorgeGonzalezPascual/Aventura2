@@ -258,41 +258,35 @@ int execute_line(char *line)
  * 
  **/
 int parse_args(char **args, char *line)
-{
-    int nToken = 0;
-    const char s[5] = " \t\r\n";
-    char *token;
+{   
+    char lineaux[COMMAND_LINE_SIZE];
+    strcpy(lineaux, line);  // Dejamos line sin modificar con el comando entero
+    int i = 0;
+    char *token = strtok(lineaux, " \n\r\t");
 
-    token = strtok(line, s);
-    args[nToken] = token;
+    while (token != NULL) {
 
-    while (token != NULL)
-    {
+        args[i] = token;
 
-#if DEBUG1
-        printf("[parse_args() → token %d: %s]\n", nToken, token);
-#endif
-        //Descartamos comentarios
-        if (*(token) != '#')
-        {
-            args[nToken] = token;
-        }
-        else
-        {
-            //Añadimos NULL
-            token = NULL;
-            args[nToken] = token;
-#if DEBUG1
-            printf("[parse_args() → token %d corregido: %s]\n", nToken, token);
-#endif
+        printf("[parse_args() --> token%i = %s] \n",i,token);
+
+        // Si no es un comentario lo añadimos como argumento
+        if (strncmp(args[i],"#",1) == 0) { 
+
+            break;   
         }
 
-        //Siguiete
-        token = strtok(NULL, s);
-        nToken++;
+        i++;
+        // Ponemos NULL para no sobreescribir
+        token = strtok(NULL, " \n\r\t");
     }
-    
-    return nToken;
+
+    // Null al final, ya que no habrá nada más que trocear
+    args[i] =  0; 
+    // Le quitamos el salto de línea a line
+    strtok(line, "\n\r"); 
+
+    return i;    
 }
 
 /**

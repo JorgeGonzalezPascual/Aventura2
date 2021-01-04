@@ -7,6 +7,7 @@
 *.elf
 *.sh
 *.json
+*.sh
 
 # Shared objects (inc. Windows DLLs)
 *.dll
