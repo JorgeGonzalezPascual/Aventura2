@@ -26,6 +26,11 @@
 #Carpetas
 gonzalez_barca_martorell/
 .vscode/
+gonzalez_barca_martorell
+.vscode
+*/gonzalez_barca_martorell/
+*/vscode/
+*.gz
 
 # Kernel Module Compile Results
 *.mod*
