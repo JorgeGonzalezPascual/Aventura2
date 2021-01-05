@@ -782,8 +782,6 @@ void ctrlc(int signum)
 {
     signal(SIGINT, ctrlc);
 
-    iPila(FOREGROUND);
-
     #if DEBUG5
         printf("\n[ctrlc() → Soy el proceso con PID %d (%s), el proceso en "
             "foreground es %d(%s)]\n",
@@ -823,8 +821,6 @@ void ctrlc(int signum)
 void ctrlz(int signum)
 {   
     signal(SIGTSTP, ctrlz);
-
-    iPila(FOREGROUND);
     
     #if DEBUG5
         printf("\n[ctrlz() -> Soy el proceso con PID %d, el proceso en foreground es %d (%s)]\n", getpid(), jobs_list[FOREGROUND].pid, jobs_list[FOREGROUND].cmd);
@@ -992,11 +988,4 @@ char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nue
     }
 
     return result;
-}
-
-
-void iPila(int p){
-    fprintf(stderr, "\njobs_list[%d].pid = %d\n", p, jobs_list[p].pid);
-    fprintf(stderr, "jobs_list[%d].status = %c\n", p, jobs_list[p].status);
-    fprintf(stderr, "jobs_list[%d].cmd = %s\n", p, jobs_list[p].cmd);
 }
