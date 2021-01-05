@@ -204,7 +204,6 @@ int execute_line(char *line)
         {
             if (!check_internal(args))
             {
-                int state;
                 pid_t pid = fork();
 
                 // Hijo
