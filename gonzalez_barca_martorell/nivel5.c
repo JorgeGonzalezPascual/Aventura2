@@ -1,14 +1,14 @@
 /**
  * Sistemas Operativos - AVENTURA 2
  * 
- * My_Shell
+ * NIVEL 5
  * 
  * Jorge González Pascual - Lluís Barca Pons - Joan Martorell Ferriol
- */
+ **/
 
 #define _POSIX_C_SOURCE 200112L
 
-// Librerias
+//Librerias
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -21,13 +21,13 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-// Constantes
+//Constantes
 #define DEBUG0 0
 #define DEBUG1 0
 #define DEBUG2 0
 #define DEBUG3 0
-#define DEBUG4 0
-#define DEBUG5 0
+#define DEBUG4 1
+#define DEBUG5 1
 
 #define COMMAND_LINE_SIZE 1024
 #define ARGS_SIZE 64
@@ -50,7 +50,7 @@
 #define COLOR_RESET "\x1b[0m"
 #define BLOND "\x1b[1m"
 
-// Variables
+//Variables
 // Estructura para almacenar los procesos
 struct info_process
 {
@@ -61,9 +61,10 @@ struct info_process
 
 static struct info_process jobs_list[N_JOBS];
 static int active_jobs = 1;
+//int n_pids;
 char mini_shell[COMMAND_LINE_SIZE];
 
-// Funciones
+//Funciones
 char *read_line(char *line);
 int execute_line(char *line);
 int parse_args(char **args, char *line);
@@ -92,9 +93,10 @@ int jobs_list_remove(int pos);
 
 /**
  * Main del programa
- */
+ **/
 int main(int argc, char *argv[])
 {
+
     // Inicializamos minishell
     strcpy(mini_shell, argv[0]);
 
@@ -123,7 +125,7 @@ int main(int argc, char *argv[])
 
 /**
  * Método para imprimir el PROMPT
- */
+**/
 void imprimir_prompt()
 {
     // Obtenemos el nombre de usuario
@@ -132,7 +134,7 @@ void imprimir_prompt()
 
     if ((prompt = malloc((sizeof(char) * COMMAND_LINE_SIZE) - sizeof(user))))
     {
-        // Obtener el directorio de trabajo actual
+        // Obtener el directorio de trabajo actual.
         getcwd(prompt, COMMAND_LINE_SIZE);
         if (strcmp(prompt, getenv("HOME")))
         {
@@ -150,13 +152,12 @@ void imprimir_prompt()
         perror("Error");
     }
 
-    // Liberamos el flujo de salida de datos
     free(prompt);
     fflush(stdout);
 }
 
 /**
- * Método para eer una linea de la consola
+ * Leer una linea de la consola
  */
 char *read_line(char *line)
 {
@@ -164,30 +165,40 @@ char *read_line(char *line)
     char *ptr = fgets(line, COMMAND_LINE_SIZE, stdin);
 
     // Leer la entrada introducida en stdin por el usuario
+    // Control de errores
     if (ptr == NULL)
     {
         printf("\r\n");
-
         if (feof(stdin))
         {
-#if DEBUG3
-            printf("Adeu\n");
-#endif
+            #if DEBUG3
+                printf("Adeu\n");
+            #endif
             exit(0);
         }
     }
-
     return line;
 }
 
+void contarPalabras(char cadena[])
+{
+    int i, contPalabras = 1;
+    for(i = 0; i < strlen(cadena); i++)
+          if(cadena[i] == ' ' && i > 0 && cadena[i - 1] != ' ')
+               contPalabras++;
+ 
+     printf("Cantidad de palabras: %d\n", contPalabras);
+}
+
 /**
- * Método que efectua la ejecución de la linea leída
+ * 
  */
 int execute_line(char *line)
 {
     char cmd[COMMAND_LINE_SIZE];
     // Reservamos memoria para los tokens
     char **args = malloc(sizeof(char *) * ARGS_SIZE);
+    //contarPalabras(line);
 
     if (args != NULL)
     {
@@ -204,6 +215,8 @@ int execute_line(char *line)
         {
             if (!check_internal(args))
             {
+
+                int state;
                 pid_t pid = fork();
 
                 // Hijo
@@ -218,8 +231,13 @@ int execute_line(char *line)
                     // Ignoramos la señal SIGINT
                     signal(SIGINT, SIG_IGN);
 
-                    is_output_redirection(args);
-
+                    
+                    for (int i = 0; args[i]; i++)
+                    {
+                        fprintf(stderr, "args: %s\n", args[i]);
+                    }
+                    
+                    
                     execvp(args[0], args);
 
                     // Terminación anormal
@@ -231,26 +249,24 @@ int execute_line(char *line)
                 else if (pid > 0)
                 {
                     // Si es background
-                    if (bckgrd == 1)
-                    {
-#if DEBUG5
-                        printf("Es un proceso en backgroud\n");
-#endif
-
-                        jobs_list_add(pid, EXECUTED, cmd);
+                    if(bckgrd == 1 ){
+                        #if DEBUG5
+                            printf("Es un proceso en backgroud\n");
+                        #endif
+                        
+                        jobs_list_add(pid,EXECUTED,cmd);
                     }
-                    else
-                    {
+                    else{
                         // Copiamos el padre en la pila
                         jobs_list[FOREGROUND].pid = pid;
                         jobs_list[FOREGROUND].status = 'E';
                         strcpy(jobs_list[FOREGROUND].cmd, cmd);
 
-#if DEBUG4
-                        printf("[execute_line() → PID padre: %d] (%s)\n", getpid(), mini_shell);
-                        printf("[execute_line() → PID hijo: %d] (%s)\n", pid, jobs_list[FOREGROUND].cmd);
-#endif
-
+                        #if DEBUG4
+                            printf("[execute_line() → PID padre: %d] (%s)\n", getpid(), mini_shell);
+                            printf("[execute_line() → PID hijo: %d] (%s)\n", pid, jobs_list[FOREGROUND].cmd);
+                        #endif
+                        
                         // Mientras haya un proceso foreground
                         while (jobs_list[FOREGROUND].pid > 0)
                         {
@@ -272,8 +288,7 @@ int execute_line(char *line)
     {
         fprintf(stderr, "Memoria dinámica llena.\n");
     }
-
-    // Liberamos memoria
+    //Liberamos memoria
     memset(line, '\0', COMMAND_LINE_SIZE);
     free(args);
 
@@ -282,14 +297,14 @@ int execute_line(char *line)
 
 /**
  * Método que mira si es un comando en segundo plano, es decir que si tiene el & al final
- */
+ **/
 int is_background(char *line)
 {
     int numeroLetras = strlen(line);
 
     if (line[numeroLetras - 2] == '&')
     {
-        // Quitamos tambien el espacio antes del '&'
+        //Quitamos tambien el espacio antes del '&'
         line[numeroLetras - 3] = '\0';
         return 1;
     }
@@ -300,78 +315,54 @@ int is_background(char *line)
 }
 
 /**
- * Método que comprueba si es un redireccionamiento y si lo es, cambia el '>' por NULL
- */
-int is_output_redirection(char **args)
-{
-    int outp = 0;
-    int args_path;
-
-    for (int i = 0; (args[i] != NULL && outp == 0); i++)
-    {
-        if (strcmp(args[i], ">") == 0)
-        {
-            if (strlen(args[i + 1]) > 1)
-            {
-                args_path = i + 1;
-                outp = 1;
-                args[i] = NULL;
-            }
-        }
-    }
-
-    if (outp == 1)
-    {
-        int fd = open(args[args_path], O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-        dup2(fd, 1);
-        close(fd);
-    }
-
-    return outp;
-}
-
-/**
- * Método que parsea divide la linea en tokens y elimina comentarios
- */
+ * 
+ * 
+ **/
 int parse_args(char **args, char *line)
-{
-    //Creamos una nueva variable para asi no perder la linea original
-    char aux[COMMAND_LINE_SIZE];
-    strcpy(aux, line);
+{   
+    char lineaux[COMMAND_LINE_SIZE];
+    strcpy(lineaux, line);  // Dejamos line sin modificar con el comando entero
     int i = 0;
-    char *token = strtok(aux, " \n\r\t");
+    char *token = strtok(lineaux, " \n\r\t");
 
-    while (token != NULL)
-    {
+    while (token != NULL) {
 
         args[i] = token;
 
-#if DEBUG1
-        printf("[parse_args() --> token%i = %s] \n", i, token);
-#endif
+        printf("[parse_args() --> token%i = %s] \n",i,token);
 
         // Si no es un comentario lo añadimos como argumento
-        if (strncmp(args[i], "#", 1) != 0)
-        {
-            i++;
+        if (strncmp(args[i],"#",1) == 0) { 
+
+            break;   
         }
 
-        // Añadimos NULL
+        i++;
+        // Ponemos NULL para no sobreescribir
         token = strtok(NULL, " \n\r\t");
     }
 
-    args[i] = 0;
-    // Quitamos el salto de línea al final
-    strtok(line, "\n\r");
+    // Null al final, ya que no habrá nada más que trocear
+    args[i] =  0; 
+    // Le quitamos el salto de línea a line
+    strtok(line, "\n\r"); 
 
-    return i;
+    return i;    
 }
 
 /**
- * Método que comprueba si es un comando interno
- */
+ * Chequeamos si es un comando interno
+ **/
 int check_internal(char **args)
 {
+
+/*
+    for (int i = 0; args[i]; i++)
+    {
+        fprintf(stderr, "args %d: %s\n",i , args[i]);
+    }
+*/
+
     int comandoInterno = 0;
 
     const char cd[] = "cd";
@@ -422,12 +413,18 @@ int check_internal(char **args)
 }
 
 /**
- * Método que utiliza la llamada al sistema chdir() para cambiar de directorio
- */
+ * Función internal_cd
+ * -----------------------------------------------------------------
+ * Utiliza la llamada al sistema chdir() para cambiar de directorio
+ * 
+ * Input:
+ * Output:
+ **/
+
 int internal_cd(char **args)
 {
     char *linea = malloc(sizeof(char) * COMMAND_LINE_SIZE);
-
+    
     if (linea == NULL)
     {
         fprintf(stderr, "No hay memoria dinámica disponible en este momento.\n");
@@ -451,7 +448,7 @@ int internal_cd(char **args)
     {
         int numeroLetrasArgs1 = strlen(args[1]);
         int permitido = 0;
-
+    
         char *ruta;
         // Comillas
         if (args[1][0] == (char)sep[1])
@@ -491,7 +488,7 @@ int internal_cd(char **args)
     // Si es una palabra
     else
     {
-        if (nArgs == 1)
+        if (nArgs == 1)       
         {
             if (chdir(getenv("HOME")))
             {
@@ -506,7 +503,7 @@ int internal_cd(char **args)
             }
         }
     }
-
+    
 #if DEBUG0
     char *prompt;
 
@@ -530,8 +527,9 @@ int internal_cd(char **args)
 }
 
 /**
- * Método que modifica la variable env indicada en el args con el nuevo valor
- */
+ * Función internal_export
+ * 
+ **/
 int internal_export(char **args)
 {
     const char *separador = "=";
@@ -563,9 +561,6 @@ int internal_export(char **args)
     return 1;
 }
 
-/**
- * Método que hace posible la mútliple ejecución de comandos contenidos dentro de un fichero
- */
 int internal_source(char **args)
 {
     // Creamos la variable y reservamos memoria para leer las lineas del fichero
@@ -576,6 +571,7 @@ int internal_source(char **args)
         // Declaramos, instanciamos y creamos el enlace al fichero a leer
         FILE *fichero = fopen(args[1], "r");
 
+        // Si existe el fichero
         if (fichero)
         {
             // Leemos las lineas y las ejecutamos
@@ -607,9 +603,7 @@ int internal_source(char **args)
     return 1;
 }
 
-/**
- * Método que visualiza por pantalla todos los trabajos activos
- */
+
 int internal_jobs(char **args)
 {
     int id = 1;
@@ -623,21 +617,18 @@ int internal_jobs(char **args)
     return EXIT_SUCCESS;
 }
 
-/**
- * Método que mueve un trabajo al foreground y espera hasta acabar
- */
 int internal_fg(char **args)
 {
-    if (args[1])
+    if (args[1]) 
     {
-        // Obtenemos el índice del trabajo
+        // Obtenemos el índice del trabajo 
         // Restamos 48 que es el valor del caracter '0' en ASCII
-        int job_index = (int)*(args[1]) - 48;
-
-        if (job_index > 0 && job_index <= active_jobs)
+        int job_index = (int) *(args[1]) - 48;
+        
+        if (job_index > 0 && job_index <= active_jobs)            
         {
             // Si el trabajo está parado, enviamos la señal para ejectuarlo
-            if (jobs_list[job_index].status == STOPPED)
+            if (jobs_list[job_index].status == STOPPED) 
             {
                 kill(jobs_list[job_index].pid, SIGCONT);
             }
@@ -651,17 +642,17 @@ int internal_fg(char **args)
 
             // Eliminamos el trabajo anterior de la lista de trabajos
             jobs_list_remove(job_index);
-
-            // Visualizamos el nuevo cmd
+            
+            // Visualizamos el nuevo cmd 
             printf("%s\n", jobs_list[FOREGROUND].cmd);
 
             // Ejecutamos pause() mientras acaba el trabajo
-            while (jobs_list[FOREGROUND].pid)
+            while (jobs_list[FOREGROUND].pid) 
             {
                 pause();
             }
 
-            return EXIT_SUCCESS;
+            return EXIT_SUCCESS;            
         }
 
         fprintf(stderr, "fg: El trabajo %d no existe\n", job_index);
@@ -672,16 +663,13 @@ int internal_fg(char **args)
     return EXIT_FAILURE;
 }
 
-/**
- * Método que continua cualquier trabajo parado en el background
- */
 int internal_bg(char **args)
 {
-    if (args[1])
+    if (args[1]) 
     {
-        // Obtenemos el índice del trabajo
+        // Obtenemos el índice del trabajo 
         // Restamos 48 que es el valor del caracter '0' en ASCII
-        int job_index = (int)*(args[1]) - 48;
+        int job_index = (int) *(args[1]) - 48;
 
         if (job_index > 0 && job_index < active_jobs)
         {
@@ -696,11 +684,11 @@ int internal_bg(char **args)
                 // Enviamos la señal e informamos por pantalla
                 kill(jobs_list[job_index].pid, SIGCONT);
 
-#if DEBUG5
-                fprintf(stderr, "[internal_fg() -> Señal %d enviada a %d (%s)\n", SIGCONT, jobs_list[job_index].pid, jobs_list[job_index].cmd);
-#endif
+                #if DEBUG5
+                    fprintf(stderr, "[internal_fg() -> Señal %d enviada a %d (%s)\n", SIGCONT, jobs_list[job_index].pid, jobs_list[job_index].cmd);                           
+                #endif
 
-                fprintf(stderr, "[%d] %d \t%c \t%s \n", job_index, jobs_list[job_index].pid, jobs_list[job_index].status, jobs_list[job_index].cmd);
+                fprintf(stderr,"[%d] %d \t%c \t%s \n", job_index, jobs_list[job_index].pid, jobs_list[job_index].status, jobs_list[job_index].cmd);
 
                 return EXIT_SUCCESS;
             }
@@ -708,18 +696,16 @@ int internal_bg(char **args)
             fprintf(stderr, "El trabajo %d, ya está en segundo plano\n", job_index);
             return EXIT_FAILURE;
         }
-
+        
         fprintf(stderr, "bg: El trabajo %d, no existe\n", job_index);
         return EXIT_FAILURE;
     }
+    
 
     fprintf(stderr, "Error bg\n");
     return EXIT_FAILURE;
 }
 
-/**
- * Método que permite la finalización del programa
- */
 int internal_exit(char **args)
 {
     exit(0);
@@ -727,7 +713,7 @@ int internal_exit(char **args)
 }
 
 /**
- * Método que permite manejar la señal SIGCHLD
+ * Manejador propio para la señal SIGCHLD
  */
 void reaper(int sig_num)
 {
@@ -744,17 +730,17 @@ void reaper(int sig_num)
             // Si el proceso ha finalizado solo
             if (WIFEXITED(status))
             {
-#if DEBUG5
-                printf("\n[reaper() -> Proceso hijo %d en foreground (%s) finalizado con exit code %d]\n", ended, jobs_list[FOREGROUND].cmd, WEXITSTATUS(status));
-#endif
+                #if DEBUG5
+                    printf("\n[reaper() -> Proceso hijo %d en foreground (%s) finalizado con exit code %d]\n", ended, jobs_list[FOREGROUND].cmd, WEXITSTATUS(status));
+                #endif
             }
 
             // Si el proceso ha finalizado por una señal
             else if (WIFSIGNALED(status))
             {
-#if DEBUG5
-                printf("\n[Proceso hijo %d (ps f) en foreground (%s) finalizado con exit code %d]\n", ended, jobs_list[FOREGROUND].cmd, WTERMSIG(status));
-#endif
+                #if DEBUG5
+                    printf("\n[Proceso hijo %d (ps f) en foreground (%s) finalizado con exit code %d]\n", ended, jobs_list[FOREGROUND].cmd, WTERMSIG(status));
+                #endif
             }
 
             // Reseteamos el jobs_list[FOREGROUND]
@@ -770,37 +756,38 @@ void reaper(int sig_num)
 
             if (WIFEXITED(status))
             {
-#if DEBUG5
-                printf("\n[reaper() -> Proceso hijo %d (ps f) en background (%s) finalizado con exit code %d]\n", ended, jobs_list[posicion].cmd, WEXITSTATUS(status));
-#endif
+                #if DEBUG5
+                    printf("\n[reaper() -> Proceso hijo %d (ps f) en background (%s) finalizado con exit code %d]\n", ended, jobs_list[posicion].cmd, WEXITSTATUS(status));
+                #endif
             }
             else if (WIFSIGNALED(status))
             {
-#if DEBUG5
-                printf("\n[Proceso hijo %d (ps f) en background (%s) finalizado con exit code %d]\n", ended, jobs_list[posicion].cmd, WTERMSIG(status));
-#endif
+                #if DEBUG5
+                    printf("\n[Proceso hijo %d (ps f) en background (%s) finalizado con exit code %d]\n", ended, jobs_list[posicion].cmd, WTERMSIG(status));
+                #endif
             }
             printf("Proceso finalizado con PID %d (%s) en jobs_list[%d] con status %d\n", ended, jobs_list[posicion].cmd, posicion, status);
-
+            
             // Eliminamos el proceso de la pila
             jobs_list_remove(posicion);
+
         }
     }
 }
 
 /**
- * Método que permite manejar la señal SIGINT(Ctrl + C)
+ * Manejador propio de la señal SIGINT(Ctrl + C)
  */
 void ctrlc(int signum)
 {
     signal(SIGINT, ctrlc);
 
-#if DEBUG5
-    printf("\n[ctrlc() → Soy el proceso con PID %d (%s), el proceso en "
-           "foreground es %d(%s)]\n",
-           getpid(), mini_shell, jobs_list[FOREGROUND].pid,
-           jobs_list[FOREGROUND].cmd);
-#endif
+    #if DEBUG5
+        printf("\n[ctrlc() → Soy el proceso con PID %d (%s), el proceso en "
+            "foreground es %d(%s)]\n",
+            getpid(), mini_shell, jobs_list[FOREGROUND].pid,
+            jobs_list[FOREGROUND].cmd);
+    #endif
 
     // Si es un proceso hijo
     if (jobs_list[0].pid > 0)
@@ -812,34 +799,32 @@ void ctrlc(int signum)
         }
         else
         {
-#if DEBUG4
-            fprintf(stderr, "\nSeñal SIGTERM no enviada debido a que el proceso en foreground es el shell");
-#endif
+            #if DEBUG4
+                fprintf(stderr, "\nSeñal SIGTERM no enviada debido a que el proceso en foreground es el shell");
+            #endif
         }
     }
     else
     {
-#if DEBUG4
-        fprintf(stderr, "\nSeñal SIGTERM no enviada debido a que no hay proceso en foreground");
-#endif
+        #if DEBUG4
+            fprintf(stderr, "\nSeñal SIGTERM no enviada debido a que no hay proceso en foreground");
+        #endif
     }
 
     // Limpiamos el flujo de salida
     printf("\n");
     fflush(stdout);
+
+    fprintf(stderr, "\nFINISH");
 }
 
-/**
- * Método que permite manejar la señal SIGSTP(Ctrl + Z)
- */
 void ctrlz(int signum)
-{
+{   
     signal(SIGTSTP, ctrlz);
-
-#if DEBUG5
-    printf("\n[ctrlz() -> Soy el proceso con PID %d, el proceso en foreground es %d (%s)]\n", getpid(), jobs_list[FOREGROUND].pid, jobs_list[FOREGROUND].cmd);
-#endif
-
+    
+    #if DEBUG5
+        printf("\n[ctrlz() -> Soy el proceso con PID %d, el proceso en foreground es %d (%s)]\n", getpid(), jobs_list[FOREGROUND].pid, jobs_list[FOREGROUND].cmd);
+    #endif
     // Comprobamos si se trata de un proceso en foreground
     if (jobs_list[FOREGROUND].pid > FOREGROUND)
     {
@@ -849,9 +834,9 @@ void ctrlz(int signum)
             // Detenemos el proceso foreground
             kill(jobs_list[FOREGROUND].pid, SIGSTOP);
 
-#if DEBUG5
-            printf("[ctrlz() -> Señal %d (SIGSTOP) enviada a %d (%s) por %d (%s)]\n", signum, jobs_list[FOREGROUND].pid, jobs_list[FOREGROUND].cmd, getpid(), mini_shell);
-#endif
+            #if DEBUG5
+                printf("[ctrlz() -> Señal %d (SIGSTOP) enviada a %d (%s) por %d (%s)]\n", signum, jobs_list[FOREGROUND].pid, jobs_list[FOREGROUND].cmd, getpid(), mini_shell);
+            #endif
 
             // Actualizamos el proceso detenido y lo añadimos a la lista de jobs
             jobs_list[FOREGROUND].status = STOPPED;
@@ -861,27 +846,21 @@ void ctrlz(int signum)
             jobs_list[FOREGROUND].pid = FOREGROUND;
             jobs_list[FOREGROUND].status = NONE;
             memset(jobs_list[FOREGROUND].cmd, '\0', sizeof(jobs_list[FOREGROUND].cmd));
-        }
-        else
-        {
+
+        } else{
             // Visualizamos el error
             printf("ctrlz() -> Señal %d (SIGTSTP) no enviada debido a que el proceso en foreground es el shell\n", signum);
-        }
-    }
-    else
-    {
+            }
+    } else {
         // Visualizamos el error
         printf("ctrlz() -> Señal %d (SIGTSTP) no enviada debido a que no hay proceso en el foreground\n", signum);
-    }
+        }
 
     fflush(stdout);
 }
 
-/// Operadores de la PILA jobs_list[] ///
 
-/**
- * Método que añade un nuevo trabajo a la última posición de jobs_list y actualiza active_jobs
- */
+/// Operadores de la PILA jobs_list[] ///
 int jobs_list_add(pid_t pid, char status, char *cmd)
 {
     if (active_jobs < N_JOBS)
@@ -901,9 +880,6 @@ int jobs_list_add(pid_t pid, char status, char *cmd)
     }
 }
 
-/**
- * Método que busca y devuelve la posición del trabajo en la pila jobs_list
- */
 int jobs_list_find(pid_t pid)
 {
     for (int i = 1; i < N_JOBS; i++)
@@ -916,9 +892,6 @@ int jobs_list_find(pid_t pid)
     return -1;
 }
 
-/**
- * Método que elimina un trabajo de la lista y añade el último active_job en la posición correspondiente
- */
 int jobs_list_remove(int pos)
 {
     if (pos > 0 && pos < N_JOBS)
@@ -932,9 +905,8 @@ int jobs_list_remove(int pos)
         active_jobs--;
 
         // Añadimos el último proceso de la lista a la posición que hemos vaciado
-        if (active_jobs != 0)
-        {
-            strcpy(jobs_list[pos].cmd, jobs_list[active_jobs].cmd);
+        if (active_jobs != 0){
+            strcpy(jobs_list[pos].cmd,jobs_list[active_jobs].cmd);
             jobs_list[pos].pid = jobs_list[active_jobs].pid;
             jobs_list[pos].status = jobs_list[active_jobs].status;
         }
@@ -950,7 +922,7 @@ int jobs_list_remove(int pos)
 
 /**
  * Método que borra un caracter de un "array/puntero"
- */
+ **/
 void characterEraser(char *args, char caracter)
 {
     int index = 0;
@@ -963,16 +935,14 @@ void characterEraser(char *args, char caracter)
             args[new_index] = args[index];
             new_index++;
         }
-
         index++;
     }
-
     args[new_index] = '\0';
 }
 
 /**
  * Método para remplazar una subcadena por otra subcadena en una cadena
- */
+ **/
 char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nuevaCadena)
 {
     char *result;
@@ -980,24 +950,26 @@ char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nue
     int newWlen = strlen(nuevaCadena);
     int oldWlen = strlen(cadenaAntigua);
 
-    // Contando el número de veces palabra antigua que sale en el String
+    // Contando el número de veces palabra antigua
+    // que sale en el String
     for (i = 0; cadena[i] != '\0'; i++)
     {
         if (strstr(&cadena[i], cadenaAntigua) == &cadena[i])
         {
             cnt++;
-            // Saltar al índice después de la palabra antigua.
+            //Saltar al índice después de la palabra antigua.
             i += oldWlen - 1;
         }
     }
 
-    // Reserva de espacio suficiente para la nueva cadena
+    //Reserva de espacio suficiente para la nueva cadena
     if ((result = malloc(i + cnt * (newWlen - oldWlen) + 1)))
     {
+
         i = 0;
         while (*cadena)
         {
-            // Comparar la subcadena con el resultado
+            //Comparar la subcadena con el resultado
             if (strstr(cadena, cadenaAntigua) == cadena)
             {
                 strcpy(&result[i], nuevaCadena);
@@ -1005,9 +977,7 @@ char *replaceWord(const char *cadena, const char *cadenaAntigua, const char *nue
                 cadena += oldWlen;
             }
             else
-            {
                 result[i++] = *cadena++;
-            }
         }
 
         result[i] = '\0';
