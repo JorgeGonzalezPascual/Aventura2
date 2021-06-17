@@ -1,4 +1,4 @@
-# AVENTURA 2
+# AVENTURA 2 - Mini Shell
 
 ### AUTORES: Jorge González Pascual - Lluís Barca Pons - Joan Martorell Ferriol
 
