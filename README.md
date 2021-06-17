@@ -1,8 +1,8 @@
 # AVENTURA 2 - Mini Shell
 
 * AUTORES: Jorge González Pascual - Lluís Barca Pons - Joan Martorell Ferriol
-** GRUPO: JLJ
-** FECHA 7/1/2021
+    * GRUPO: JLJ
+    * FECHA 7/1/2021
 
 * OBSERVACIONES:
 Este proyecto tiene como objetivo recrear la Shell de Linux y para poder relizarlo se han implementado una serie de comandos 
