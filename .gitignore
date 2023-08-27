@@ -1,0 +1,48 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+#Object file
+*.o
+*.ko
+*.obj
+*.elf
+*.sh
+*.json
+*.sh
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+.so.
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+.i86
+*.x86_64
+*.hex
+
+#Carpetas
+gonzalez_barca_martorell/
+.vscode/
+gonzalez_barca_martorell
+.vscode
+*/gonzalez_barca_martorell/
+*/vscode/
+*.gz
+*.gitignore
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
+
+# SIN EXTENSIÓN
+*
+!/**/
+!*.*
